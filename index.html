@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17365D"><title>DigitalMitra Business</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--n:#17365D;--b:#2F75B5;--g:#548235;--bg:#f5f7fa;--t:#17202a;--m:#667085;--line:#e5e7eb}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:var(--t)}
+header{background:var(--n);color:#fff;padding:18px 16px}header h1{margin:0;font-size:21px}header p{margin:3px 0 0;font-size:12px;opacity:.8}
+main{max-width:720px;margin:auto;padding:14px 12px 88px}.view{display:none}.view.active{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric span{font-size:12px;color:var(--m)}.metric strong{display:block;font-size:21px;color:var(--n);margin-top:5px}
+h2{margin:0 0 6px}.muted{font-size:12px;color:var(--m)}
+label{display:block;font-size:12px;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:10px;font-size:15px;background:white}
+button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:14px}.primary{background:var(--b);color:#fff}.green{background:var(--g);color:#fff}.light{background:#eaf2f8;color:var(--n)}
+.actions{display:flex;gap:8px;margin-top:15px}.actions>*{flex:1}.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.badge{font-size:11px;padding:4px 8px;border-radius:20px;background:#e2f0d9;color:#3d6b25}.due{background:#fdecec;color:#b42318}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:5}.navin{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}.nav button{background:none;color:var(--m);padding:9px 2px}.nav button.active{color:var(--b)}.nav b{display:block;font-size:18px}.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#17202a;color:#fff;padding:10px 14px;border-radius:9px;display:none;z-index:9}.auth{max-width:420px;margin:45px auto;padding:16px}.hidden{display:none!important}
+</style></head>
+<body>
+<header><h1>DigitalMitra Business</h1><p id="biz">Cloud Business Management</p></header>
+<main>
+<section id="auth" class="view active">
+<div class="card auth">
+<h2>Welcome</h2><p class="muted">Your products and sales stay in your account even if the app is reinstalled.</p>
+<label>Email</label><input id="email" type="email" placeholder="you@example.com">
+<label>Password</label><input id="password" type="password" placeholder="Minimum 6 characters">
+<div class="actions"><button class="primary" onclick="signIn()">Login</button><button class="light" onclick="signUp()">Create Account</button></div>
+<button class="light" style="width:100%;margin-top:8px" onclick="resetPassword()">Forgot password?</button><p id="authMsg" class="muted"></p>
+</div></section>
+<section id="app" class="view">
+<div id="home" class="screen">
+<div class="grid">
+<div class="card metric"><span>Today's Sales</span><strong id="today">₹0</strong></div>
+<div class="card metric"><span>This Month</span><strong id="month">₹0</strong></div>
+<div class="card metric"><span>Profit</span><strong id="profit">₹0</strong></div>
+<div class="card metric"><span>Customer Due</span><strong id="due">₹0</strong></div>
+</div>
+<div class="actions"><button class="primary" onclick="go('sale')">＋ New Sale</button><button class="green" onclick="go('products')">＋ Product</button></div>
+<div class="card"><h2>Low Stock</h2><div id="low"></div></div>
+<div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p></div>
+</div>
+<div id="sale" class="screen hidden">
+<div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
+<label>Customer</label><input id="customer" placeholder="Customer name">
+<label>Product</label><select id="product" onchange="preview()"></select>
+<label>Quantity</label><input id="qty" type="number" min="1" value="1" oninput="preview()">
+<label>Payment</label><select id="payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Other</option></select>
+<div class="card" style="background:#f8fafc"><div class="row"><span>Price</span><b id="price">₹0</b></div><div class="row"><span>Total</span><b id="total">₹0</b></div><div class="row"><span>Profit</span><b id="profit2">₹0</b></div><div class="row"><span>Stock after</span><b id="stock">0</b></div></div>
+<div class="actions"><button class="light" onclick="go('home')">Cancel</button><button class="primary" onclick="saveSale()">Save Sale</button></div></div>
+</div>
+<div id="products" class="screen hidden">
+<div class="card"><h2>Products</h2>
+<label>Product name</label><input id="pn">
+<div class="grid"><div><label>Cost</label><input id="pc" type="number" min="0"></div><div><label>Selling</label><input id="ps" type="number" min="0"></div><div><label>Stock</label><input id="po" type="number" min="0"></div><div><label>Reorder</label><input id="pr" type="number" min="0"></div></div>
+<div class="actions"><button class="primary" onclick="addProduct()">Add Product</button></div></div>
+<div class="card"><h2>Your Products</h2><div id="plist"></div></div>
+</div>
+<div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
+<div id="customers" class="screen hidden"><div class="card"><h2>Customers</h2><div id="clist"></div></div></div>
+</section>
+</main>
+<nav id="nav" class="nav hidden"><div class="navin">
+<button onclick="go('home')" data-s="home" class="active"><b>⌂</b>Home</button>
+<button onclick="go('sale')" data-s="sale"><b>＋</b>Sale</button>
+<button onclick="go('products')" data-s="products"><b>□</b>Products</button>
+<button onclick="go('sales')" data-s="sales"><b>≡</b>Sales</button>
+<button onclick="go('customers')" data-s="customers"><b>♙</b>Customers</button>
+</div></nav>
+<div id="toast" class="toast"></div>
+<script>
+const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
+const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let products=[],sales=[];
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
+function showAuth(){document.getElementById('auth').classList.add('active');document.getElementById('app').classList.remove('active');document.getElementById('nav').classList.add('hidden')}
+function showApp(){document.getElementById('auth').classList.remove('active');document.getElementById('app').classList.add('active');document.getElementById('nav').classList.remove('hidden')}
+async function signUp(){
+ try{
+  const e=document.getElementById('email').value.trim();
+  const pw=document.getElementById('password').value;
+  const m=document.getElementById('authMsg');
+  if(!e){m.textContent='Please enter your email.';return}
+  if(!pw || pw.length<6){m.textContent='Password must be at least 6 characters.';return}
+  m.textContent='Creating account...';
+  const {data,error}=await sb.auth.signUp({email:e,password:pw,options:{emailRedirectTo:location.origin+'/' }});
+  if(error){m.textContent=error.message;return}
+  if(data.session){m.textContent='Account created.';await start();}
+  else{m.textContent='Account created. Check your email and tap Confirm Email.';}
+ }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
+}
+async function resetPassword(){
+ try{
+  const e=document.getElementById('email').value.trim();
+  const m=document.getElementById('authMsg');
+  if(!e){m.textContent='Enter your email first.';return}
+  const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+'/' });
+  m.textContent=error?error.message:'Password reset email sent.';
+ }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
+}
+async function signIn(){
+ try{
+  const e=document.getElementById('email').value.trim();
+  const pw=document.getElementById('password').value;
+  const m=document.getElementById('authMsg');
+  if(!e||!pw){m.textContent='Enter your email and password.';return}
+  const {data,error}=await sb.auth.signInWithPassword({email:e,password:pw});
+  if(error){m.textContent=error.message;return}
+  await start();
+ }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
+}
+async function logout(){await sb.auth.signOut();showAuth()}
+async function start(){showApp();await load();go('home')}
+async function load(){
+ const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
+ products=p.data||[];
+ const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);sales=s.data||[];
+ render();
+}
+function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));render();if(id==='sale')preview()}
+async function addProduct(){
+ const name=document.getElementById('pn').value.trim(),cost=+document.getElementById('pc').value,sell=+document.getElementById('ps').value,stock=+document.getElementById('po').value,reorder=+document.getElementById('pr').value;
+ if(!name){msg('Enter product name');return}
+ const {error}=await sb.from('products').insert({name,cost_price:cost,selling_price:sell,stock,reorder_level:reorder});
+ if(error){msg(error.message);return}
+ document.getElementById('pn').value=document.getElementById('pc').value=document.getElementById('ps').value=document.getElementById('po').value=document.getElementById('pr').value='';await load();msg('Product added')
+}
+function preview(){
+ const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0;
+ document.getElementById('price').textContent=money(p?.selling_price);document.getElementById('total').textContent=money((p?.selling_price||0)*q);
+ document.getElementById('profit2').textContent=money(((p?.selling_price||0)-(p?.cost_price||0))*q);document.getElementById('stock').textContent=(p?.stock||0)-q
+}
+async function saveSale(){
+ const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0,pay=document.getElementById('payment').value,customerName=document.getElementById('customer').value.trim()||'Walk-in Customer';
+ if(!p||q<=0){msg('Select product and quantity');return}
+ if(q>p.stock){msg('Not enough stock');return}
+ const {data,error}=await sb.rpc('create_sale',{p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
+ if(error){msg(error.message);return}
+ document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
+ await load();msg('Sale saved');go('home')
+}
+function render(){
+ const sel=document.getElementById('product');if(sel){sel.innerHTML=products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+ const now=new Date(),ym=now.toISOString().slice(0,7),td=now.toISOString().slice(0,10);
+ const ms=sales.filter(s=>s.created_at.slice(0,10).startsWith(ym)),ts=sales.filter(s=>s.created_at.slice(0,10)===td);
+ document.getElementById('today').textContent=money(ts.reduce((a,s)=>a+s.total,0));document.getElementById('month').textContent=money(ms.reduce((a,s)=>a+s.total,0));document.getElementById('profit').textContent=money(ms.reduce((a,s)=>a+s.profit,0));
+ document.getElementById('due').textContent=money(sales.filter(s=>s.payment_method==='Credit').reduce((a,s)=>a+s.total,0));
+ document.getElementById('low').innerHTML=products.filter(p=>p.stock<=p.reorder_level).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
+ document.getElementById('plist').innerHTML=products.map(p=>`<div class="item row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div>`).join('')||'<p class="muted">No products.</p>';
+ document.getElementById('slist').innerHTML=sales.map(s=>`<div class="item row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(products.find(p=>p.id===s.product_id)?.name||'Product')} · ${s.payment_method}</small></span><b>${money(s.total)}</b></div>`).join('')||'<p class="muted">No sales.</p>';
+ const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+s.total);
+ document.getElementById('clist').innerHTML=Object.entries(map).map(([n,v])=>`<div class="item row"><b>${esc(n)}</b><span class="badge due">${money(v)} due</span></div>`).join('')||'<p class="muted">No customer dues.</p>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!products.length)await start();else if(!session)showAuth()});
+(async()=>{const {data}=await sb.auth.getSession();if(data.session)await start();else showAuth()})();
+</script></body></html>

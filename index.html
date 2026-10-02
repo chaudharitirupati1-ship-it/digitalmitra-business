@@ -41,7 +41,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div id="sale" class="screen hidden">
 <div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
-<label>Customer</label><select id="customer"></select>
+<label>Customer</label><input id="customer" placeholder="Customer name">
 <label>Product</label><select id="product" onchange="preview()"></select>
 <label>Quantity</label><input id="qty" type="number" min="1" value="1" oninput="preview()">
 <label>Payment</label><select id="payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Other</option></select>
@@ -56,13 +56,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card"><h2>Your Products</h2><div id="plist"></div></div>
 </div>
 <div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
-<div id="customers" class="screen hidden">
-<div class="card"><h2>Customer Management</h2><p class="muted">Manage your shop customers and their credit-sale names.</p>
-<label>Customer Name</label><input id="cn" placeholder="e.g. Rahul Patil">
-<label>Mobile Number (optional)</label><input id="cm" type="tel" placeholder="10-digit mobile number">
-<div class="actions"><button class="primary" onclick="addCustomer()">Add Customer</button><button class="light" onclick="renderCustomers()">Refresh</button></div>
-</div>
-<div class="card"><h2>Your Customers</h2><input id="customerSearch" placeholder="Search customer" oninput="renderCustomers()"><div id="clist"></div></div>
+<div id="customers" class="screen hidden"><div class="card"><h2>Customers</h2><div id="clist"></div></div>
 </div>
 <div id="admin" class="screen hidden">
 <div class="card">
@@ -90,7 +84,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],sales=[],businessCustomers=[],currentProfile=null;
+let products=[],sales=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
 function showAuth(){document.getElementById('auth').classList.add('active');document.getElementById('app').classList.remove('active');document.getElementById('nav').classList.add('hidden')}
@@ -147,9 +141,6 @@ async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
  products=p.data||[];
  const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);sales=s.data||[];
- const cu=await sb.from('customers').select('*').order('name');
- if(cu.error){msg(cu.error.message);return}
- businessCustomers=cu.data||[];
  render();
 }
 async function loadCustomers(){
@@ -202,7 +193,7 @@ function preview(){
  document.getElementById('profit2').textContent=money(((p?.selling_price||0)-(p?.cost_price||0))*q);document.getElementById('stock').textContent=(p?.stock||0)-q
 }
 async function saveSale(){
- const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0,pay=document.getElementById('payment').value,customerName=document.getElementById('customer').value||'Walk-in Customer';
+ const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0,pay=document.getElementById('payment').value,customerName=document.getElementById('customer').value.trim()||'Walk-in Customer';
  if(!p||q<=0){msg('Select product and quantity');return}
  if(q>p.stock){msg('Not enough stock');return}
  const {data,error}=await sb.rpc('create_sale',{p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
@@ -212,7 +203,6 @@ async function saveSale(){
 }
 function render(){
  const sel=document.getElementById('product');if(sel){sel.innerHTML=products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
- const cs=document.getElementById('customer');if(cs){cs.innerHTML='<option value="Walk-in Customer">Walk-in Customer</option>'+businessCustomers.filter(x=>!x.archived).map(x=>`<option value="${esc(x.name)}">${esc(x.name)}${x.mobile?' · '+esc(x.mobile):''}</option>`).join('')}
  const now=new Date(),ym=now.toISOString().slice(0,7),td=now.toISOString().slice(0,10);
  const ms=sales.filter(s=>s.created_at.slice(0,10).startsWith(ym)),ts=sales.filter(s=>s.created_at.slice(0,10)===td);
  document.getElementById('today').textContent=money(ts.reduce((a,s)=>a+s.total,0));document.getElementById('month').textContent=money(ms.reduce((a,s)=>a+s.total,0));document.getElementById('profit').textContent=money(ms.reduce((a,s)=>a+s.profit,0));
@@ -221,45 +211,9 @@ function render(){
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div>`).join('')||'<p class="muted">No products.</p>';
  document.getElementById('slist').innerHTML=sales.map(s=>`<div class="item row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(products.find(p=>p.id===s.product_id)?.name||'Product')} · ${s.payment_method}</small></span><b>${money(s.total)}</b></div>`).join('')||'<p class="muted">No sales.</p>';
  const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+s.total);
- renderCustomers();
+ document.getElementById('clist').innerHTML=Object.entries(map).map(([n,v])=>`<div class="item row"><b>${esc(n)}</b><span class="badge due">${money(v)} due</span></div>`).join('')||'<p class="muted">No customer dues.</p>';
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-async function addCustomer(){
- const name=document.getElementById('cn').value.trim(),mobile=document.getElementById('cm').value.trim();
- if(!name){msg('Enter customer name');return}
- const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return}
- const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name,mobile:mobile||null});
- if(error){msg(error.message);return}
- document.getElementById('cn').value='';document.getElementById('cm').value='';
- await load();msg('Customer added');
-}
-async function editCustomer(id){
- const x=businessCustomers.find(c=>c.id===id);if(!x)return;
- const name=prompt('Customer name:',x.name);if(name===null)return;
- const mobile=prompt('Mobile number:',x.mobile||'');if(mobile===null)return;
- if(!name.trim()){msg('Customer name is required');return}
- const {error}=await sb.from('customers').update({name:name.trim(),mobile:mobile.trim()||null}).eq('id',id);
- if(error){msg(error.message);return} await load();msg('Customer updated');
-}
-async function archiveCustomer(id,archived){
- const {error}=await sb.from('customers').update({archived}).eq('id',id);
- if(error){msg(error.message);return} await load();msg(archived?'Customer archived':'Customer restored');
-}
-async function deleteCustomer(id){
- if(!confirm('Delete this customer permanently?'))return;
- const {error}=await sb.from('customers').delete().eq('id',id);
- if(error){msg(error.message);return} await load();msg('Customer deleted');
-}
-function renderCustomers(){
- const el=document.getElementById('clist');if(!el)return;
- const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
- const list=businessCustomers.filter(x=>x.name.toLowerCase().includes(q)||(x.mobile||'').includes(q));
- el.innerHTML=list.map(x=>`<div class="item">
- <div class="row"><span><b>${esc(x.name)}</b><br><small>${esc(x.mobile||'No mobile')}</small></span><span class="badge ${x.archived?'due':''}">${x.archived?'Archived':'Active'}</span></div>
- <div class="actions"><button class="light" onclick="editCustomer('${x.id}')">Edit</button><button class="light" onclick="archiveCustomer('${x.id}',${!x.archived})">${x.archived?'Restore':'Archive'}</button></div>
- <button class="light" style="width:100%;margin-top:8px" onclick="deleteCustomer('${x.id}')">Delete</button>
- </div>`).join('')||'<p class="muted">No customers found.</p>';
-}
 sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!products.length)await start();else if(!session)showAuth()});
 (async()=>{const {data}=await sb.auth.getSession();if(data.session)await start();else showAuth()})();
 </script></body></html>

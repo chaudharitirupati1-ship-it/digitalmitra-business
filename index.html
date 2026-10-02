@@ -105,7 +105,16 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <label>Outstanding Due (₹)</label><input id="editCustomerDue" type="number" min="0" step="0.01" placeholder="0">
 <div class="modal-actions"><button class="light" onclick="closeCustomerModal()">Cancel</button><button class="primary" onclick="saveCustomerEdit()">Save Changes</button></div>
 </div></div>
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast"></div><div id="setPasswordModal" class="modal" onclick="if(event.target===this)closeSetPassword()">
+<div class="modal-box">
+<h3>Set Your Password</h3>
+<p class="muted">Your DigitalMitra account is ready. Create your own password to secure your account.</p>
+<label>New Password</label><input id="newAccountPassword" type="password" minlength="6" placeholder="Minimum 6 characters">
+<label>Confirm Password</label><input id="confirmAccountPassword" type="password" minlength="6" placeholder="Re-enter password">
+<div class="modal-actions"><button class="primary" onclick="setAccountPassword()">Set Password</button></div>
+<p id="setPasswordMsg" class="muted"></p>
+</div></div>
+
 <script>
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
@@ -150,6 +159,19 @@ async function signIn(){
  }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
 }
 async function logout(){await sb.auth.signOut();showAuth()}
+function openSetPassword(){document.getElementById('setPasswordModal').classList.add('open');setTimeout(()=>document.getElementById('newAccountPassword').focus(),50)}
+function closeSetPassword(){document.getElementById('setPasswordModal').classList.remove('open')}
+async function setAccountPassword(){
+ const p=document.getElementById('newAccountPassword').value;
+ const c=document.getElementById('confirmAccountPassword').value;
+ const m=document.getElementById('setPasswordMsg');
+ if(!p||p.length<6){m.textContent='Password must be at least 6 characters.';return}
+ if(p!==c){m.textContent='Passwords do not match.';return}
+ m.textContent='Saving...';
+ const {error}=await sb.auth.updateUser({password:p,data:{...((await sb.auth.getUser()).data.user?.user_metadata||{}),payment_invite:false}});
+ if(error){m.textContent=error.message;return}
+ closeSetPassword();msg('Password set successfully');
+}
 async function start(){
  const {data:sd}=await sb.auth.getSession();
  if(!sd.session){showAuth();return}
@@ -160,8 +182,10 @@ async function start(){
  }
  currentProfile=profile;
  document.getElementById('biz').textContent=profile.business_name||'Cloud Business Management';
+ const invitedViaPayment=sd.session.user?.user_metadata?.payment_invite===true;
  document.getElementById('adminBtn').classList.toggle('hidden',profile.role!=='admin');
- showApp();await load();if(profile.role==='admin'){await loadCustomers();await loadPaidOrders()}const saved=location.hash.replace('#','');go(['home','sale','products','sales','customers','admin'].includes(saved)?saved:'home',false)
+ showApp();await load();if(profile.role==='admin'){await loadCustomers();await loadPaidOrders()}const saved=location.hash.replace('#','');go(['home','sale','products','sales','customers','admin'].includes(saved)?saved:'home',false);
+ if(invitedViaPayment) setTimeout(openSetPassword,250)
 }
 async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}

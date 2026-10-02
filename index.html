@@ -183,7 +183,7 @@ function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.add(
 async function addProduct(){
  const name=document.getElementById('pn').value.trim(),cost=+document.getElementById('pc').value,sell=+document.getElementById('ps').value,stock=+document.getElementById('po').value,reorder=+document.getElementById('pr').value;
  if(!name){msg('Enter product name');return}
- const {error}=await sb.from('products').insert({name,cost_price:cost,selling_price:sell,stock,reorder_level:reorder});
+ const {data:sd}=await sb.auth.getSession(); if(!sd.session){msg('Please log in again');return} const {error}=await sb.from('products').insert({user_id:sd.session.user.id,name,cost_price:cost,selling_price:sell,stock,reorder_level:reorder});
  if(error){msg(error.message);return}
  document.getElementById('pn').value=document.getElementById('pc').value=document.getElementById('ps').value=document.getElementById('po').value=document.getElementById('pr').value='';await load();msg('Product added')
 }

@@ -56,7 +56,8 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card"><h2>Your Products</h2><div id="plist"></div></div>
 </div>
 <div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
-<div id="customers" class="screen hidden"><div class="card"><h2>Customers</h2><div id="clist"></div></div>
+<div id="customers" class="screen hidden">
+<div class="card"><h2>Customers</h2><input id="customerSearch" placeholder="Search customer" oninput="renderCustomers()"><div id="clist"></div></div>
 </div>
 <div id="admin" class="screen hidden">
 <div class="card">
@@ -84,7 +85,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],sales=[],currentProfile=null;
+let products=[],sales=[],businessCustomers=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
 function showAuth(){document.getElementById('auth').classList.add('active');document.getElementById('app').classList.remove('active');document.getElementById('nav').classList.add('hidden')}
@@ -140,6 +141,7 @@ async function start(){
 async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
  products=p.data||[];
+ const cu=await sb.from('customers').select('*').order('name'); if(cu.error){msg(cu.error.message);return} businessCustomers=cu.data||[];
  const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);sales=s.data||[];
  render();
 }
@@ -210,8 +212,27 @@ function render(){
  document.getElementById('low').innerHTML=products.filter(p=>p.stock<=p.reorder_level).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div>`).join('')||'<p class="muted">No products.</p>';
  document.getElementById('slist').innerHTML=sales.map(s=>`<div class="item row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(products.find(p=>p.id===s.product_id)?.name||'Product')} · ${s.payment_method}</small></span><b>${money(s.total)}</b></div>`).join('')||'<p class="muted">No sales.</p>';
+ renderCustomers();
+}
+async function renderCustomers(){
+ const el=document.getElementById('clist');if(!el)return;
+ const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
  const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+s.total);
- document.getElementById('clist').innerHTML=Object.entries(map).map(([n,v])=>`<div class="item row"><b>${esc(n)}</b><span class="badge due">${money(v)} due</span></div>`).join('')||'<p class="muted">No customer dues.</p>';
+ const names=[...new Set([...businessCustomers.map(x=>x.name),...Object.keys(map)])].filter(n=>n.toLowerCase().includes(q));
+ el.innerHTML=names.map(n=>{const x=businessCustomers.find(c=>c.name===n);return `<div class="item"><div class="row"><b>${esc(n)}</b><span class="badge due">${money(map[n]||0)} due</span></div><div class="actions"><button class="light" onclick="editCustomer('${x?.id||''}','${esc(n).replace(/'/g,"&#39;")}')">Edit</button><button class="light" onclick="deleteCustomer('${x?.id||''}','${esc(n).replace(/'/g,"&#39;")}')">Delete</button></div></div>`}).join('')||'<p class="muted">No customers found.</p>';
+}
+async function editCustomer(id,currentName){
+ const name=prompt('Enter new customer name:',currentName);if(name===null)return;
+ const n=name.trim();if(!n){msg('Customer name is required');return}
+ if(id){const {error}=await sb.from('customers').update({name:n}).eq('id',id);if(error){msg(error.message);return}}
+ else{const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return} const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n});if(error){msg(error.message);return}}
+ await load();msg('Customer updated');
+}
+async function deleteCustomer(id,currentName){
+ if(!confirm('Delete this customer?'))return;
+ if(id){const {error}=await sb.from('customers').delete().eq('id',id);if(error){msg(error.message);return}}
+ else{msg('This customer comes from a previous sale. Edit it first to create a customer record, then delete it.');return}
+ await load();msg('Customer deleted');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!products.length)await start();else if(!session)showAuth()});

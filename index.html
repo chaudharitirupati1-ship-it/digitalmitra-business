@@ -37,7 +37,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div class="actions"><button class="primary" onclick="go('sale')">＋ New Sale</button><button class="green" onclick="go('products')">＋ Product</button></div>
 <div class="card"><h2>Low Stock</h2><div id="low"></div></div>
-<div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p></div>
+<div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p><button id="adminBtn" class="primary hidden" style="width:100%;margin-top:10px" onclick="go('admin')">⚙ Admin Panel</button></div>
 </div>
 <div id="sale" class="screen hidden">
 <div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
@@ -56,7 +56,20 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card"><h2>Your Products</h2><div id="plist"></div></div>
 </div>
 <div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
-<div id="customers" class="screen hidden"><div class="card"><h2>Customers</h2><div id="clist"></div></div></div>
+<div id="customers" class="screen hidden"><div class="card"><h2>Customers</h2><div id="clist"></div></div>
+</div>
+<div id="admin" class="screen hidden">
+<div class="card">
+<h2>Customer Management</h2><p class="muted">Create and manage customer accounts for customers who purchase DigitalMitra.</p>
+<label>Customer / Shop Name</label><input id="aeBiz" placeholder="e.g. Shree Medical Store">
+<label>Login Email</label><input id="aeEmail" type="email" placeholder="customer login email">
+<label>Temporary Password</label><input id="aePw" type="text" placeholder="Minimum 6 characters">
+<label>Account Expiry (optional)</label><input id="aeExpiry" type="date">
+<div class="actions"><button class="primary" onclick="createCustomer()">Create Customer</button><button class="light" onclick="loadCustomers()">Refresh</button></div>
+<p id="adminMsg" class="muted"></p>
+</div>
+<div class="card"><h2>Customers</h2><div id="customerAdminList"></div></div>
+</div>
 </section>
 </main>
 <nav id="nav" class="nav hidden"><div class="navin">
@@ -71,7 +84,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products=[],sales=[];
+let products=[],sales=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
 function showAuth(){document.getElementById('auth').classList.add('active');document.getElementById('app').classList.remove('active');document.getElementById('nav').classList.add('hidden')}
@@ -111,12 +124,60 @@ async function signIn(){
  }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
 }
 async function logout(){await sb.auth.signOut();showAuth()}
-async function start(){showApp();await load();go('home')}
+async function start(){
+ const {data:sd}=await sb.auth.getSession();
+ if(!sd.session){showAuth();return}
+ const {data:profile,error}=await sb.from('profiles').select('business_name,role,status,expires_at').eq('id',sd.session.user.id).single();
+ if(error||!profile){await sb.auth.signOut();showAuth();document.getElementById('authMsg').textContent='Account profile not found.';return}
+ if(profile.status!=='active' || (profile.expires_at && profile.expires_at < new Date().toISOString().slice(0,10))){
+   await sb.auth.signOut();showAuth();document.getElementById('authMsg').textContent='This DigitalMitra account is inactive or expired.';return
+ }
+ currentProfile=profile;
+ document.getElementById('biz').textContent=profile.business_name||'Cloud Business Management';
+ document.getElementById('adminBtn').classList.toggle('hidden',profile.role!=='admin');
+ showApp();await load();if(profile.role==='admin') await loadCustomers();go('home')
+}
 async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
  products=p.data||[];
  const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);sales=s.data||[];
  render();
+}
+async function loadCustomers(){
+ if(currentProfile?.role!=='admin') return;
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'list'}});
+ if(error){document.getElementById('adminMsg').textContent=error.message;return}
+ if(data?.error){document.getElementById('adminMsg').textContent=data.error;return}
+ const list=data.customers||[];
+ document.getElementById('customerAdminList').innerHTML=list.map(x=>`<div class="item">
+ <div class="row"><span><b>${esc(x.business_name)}</b><br><small>${esc(x.email)}</small></span><span class="badge ${x.status==='active'?'':'due'}">${x.status}</span></div>
+ <small>Expiry: ${x.expires_at||'No expiry'}</small>
+ <div class="actions">
+ <button class="light" onclick="toggleCustomer('${x.id}','${x.status}')">${x.status==='active'?'Suspend':'Activate'}</button>
+ <button class="light" onclick="resetCustomer('${x.id}')">Reset Password</button>
+ </div></div>`).join('')||'<p class="muted">No customers yet.</p>';
+}
+async function createCustomer(){
+ const business_name=document.getElementById('aeBiz').value.trim(),email=document.getElementById('aeEmail').value.trim(),password=document.getElementById('aePw').value,expires_at=document.getElementById('aeExpiry').value||null;
+ const m=document.getElementById('adminMsg');m.textContent='Creating customer...';
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'create',business_name,email,password,expires_at}});
+ if(error){m.textContent=error.message;return}
+ if(data?.error){m.textContent=data.error;return}
+ m.textContent='Customer created. Give them the login email and password.';
+ document.getElementById('aeBiz').value=document.getElementById('aeEmail').value=document.getElementById('aePw').value=document.getElementById('aeExpiry').value='';
+ await loadCustomers();
+}
+async function toggleCustomer(id,status){
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'update',id,status:status==='active'?'suspended':'active'}});
+ if(error||data?.error){msg(error?.message||data?.error||'Update failed');return}
+ await loadCustomers();msg('Customer updated');
+}
+async function resetCustomer(id){
+ const pw=prompt('Enter new password (minimum 6 characters):');
+ if(!pw)return;
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'reset_password',id,password:pw}});
+ if(error||data?.error){msg(error?.message||data?.error||'Reset failed');return}
+ msg('Password reset successfully');
 }
 function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));render();if(id==='sale')preview()}
 async function addProduct(){

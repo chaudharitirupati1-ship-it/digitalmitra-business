@@ -135,7 +135,7 @@ async function start(){
  currentProfile=profile;
  document.getElementById('biz').textContent=profile.business_name||'Cloud Business Management';
  document.getElementById('adminBtn').classList.toggle('hidden',profile.role!=='admin');
- showApp();await load();if(profile.role==='admin') await loadCustomers();go('home')
+ showApp();await load();if(profile.role==='admin') await loadCustomers();const saved=location.hash.replace('#','');go(['home','sale','products','sales','customers','admin'].includes(saved)?saved:'home',false)
 }
 async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
@@ -179,7 +179,7 @@ async function resetCustomer(id){
  if(error||data?.error){msg(error?.message||data?.error||'Reset failed');return}
  msg('Password reset successfully');
 }
-function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));render();if(id==='sale')preview()}
+function go(id,updateHash=true){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));if(updateHash){history.replaceState(null,'','#'+id)}render();if(id==='sale')preview()}
 async function addProduct(){
  const name=document.getElementById('pn').value.trim(),cost=+document.getElementById('pc').value,sell=+document.getElementById('ps').value,stock=+document.getElementById('po').value,reorder=+document.getElementById('pr').value;
  if(!name){msg('Enter product name');return}

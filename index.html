@@ -57,7 +57,10 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="actions"><button class="primary" onclick="addProduct()">Add Product</button></div></div>
 <div class="card"><h2>Your Products</h2><div id="plist"></div></div>
 </div>
-<div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
+<div id="sales" class="screen hidden"><div class="card">
+<div class="customer-head"><div><h2>Sales</h2><p class="muted" style="margin:0">View your sales history</p></div><button class="delete-btn" onclick="clearAllSales()">🗑 Clear All</button></div>
+<div id="slist"></div>
+</div></div>
 <div id="customers" class="screen hidden">
 <div class="card">
 <div class="customer-head"><div><h2>Customers</h2><p class="muted" style="margin:0">Manage customer names and outstanding dues</p></div></div>
@@ -215,6 +218,16 @@ async function saveSale(){
  if(error){msg(error.message);return}
  document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
  await load();msg('Sale saved');go('home')
+}
+async function clearAllSales(){
+ if(!sales.length){msg('No sales to clear');return}
+ const ok=confirm('Clear ALL sales history? This cannot be undone. Stock will not be restored.');
+ if(!ok)return;
+ const {data:sd}=await sb.auth.getSession();
+ if(!sd.session){msg('Please log in again');return}
+ const {error}=await sb.from('sales').delete().eq('user_id',sd.session.user.id);
+ if(error){msg(error.message);return}
+ await load();msg('All sales cleared');
 }
 function render(){
  const sel=document.getElementById('product');if(sel){sel.innerHTML=products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}

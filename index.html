@@ -15,6 +15,7 @@ h2{margin:0 0 6px}.muted{font-size:12px;color:var(--m)}
 label{display:block;font-size:12px;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:10px;font-size:15px;background:white}
 button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:14px}.primary{background:var(--b);color:#fff}.green{background:var(--g);color:#fff}.light{background:#eaf2f8;color:var(--n)}
 .actions{display:flex;gap:8px;margin-top:15px}.actions>*{flex:1}.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.badge{font-size:11px;padding:4px 8px;border-radius:20px;background:#e2f0d9;color:#3d6b25}.due{background:#fdecec;color:#b42318}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:5}.navin{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}.nav button{background:none;color:var(--m);padding:9px 2px}.nav button.active{color:var(--b)}.nav b{display:block;font-size:18px}.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#17202a;color:#fff;padding:10px 14px;border-radius:9px;display:none;z-index:9}.auth{max-width:420px;margin:45px auto;padding:16px}.hidden{display:none!important}
+.customer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.customer-search{position:relative}.customer-search input{padding-left:40px}.customer-search span{position:absolute;left:13px;top:11px;color:var(--m);font-size:18px}.customer-card{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin:9px 0}.customer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.customer-name{font-size:16px;font-weight:800}.customer-due{font-size:17px;font-weight:800;color:#b42318}.customer-meta{font-size:12px;color:var(--m);margin-top:4px}.customer-actions{display:flex;gap:8px;margin-top:12px}.customer-actions button{flex:1}.edit-btn{background:#eef4ff;color:var(--n)}.delete-btn{background:#fff1f0;color:#b42318}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}.modal.open{display:flex}.modal-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:20px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}.modal-box h3{margin:0 0 4px;font-size:20px}.modal-actions{display:flex;gap:10px;margin-top:18px}.modal-actions button{flex:1}
 </style><!-- Vercel redeploy trigger -->
 </head>
 <body>
@@ -58,7 +59,11 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div id="sales" class="screen hidden"><div class="card"><h2>Sales</h2><div id="slist"></div></div></div>
 <div id="customers" class="screen hidden">
-<div class="card"><h2>Customers</h2><input id="customerSearch" placeholder="Search customer" oninput="renderCustomers()"><div id="clist"></div></div>
+<div class="card">
+<div class="customer-head"><div><h2>Customers</h2><p class="muted" style="margin:0">Manage customer names and outstanding dues</p></div></div>
+<div class="customer-search"><span>⌕</span><input id="customerSearch" placeholder="Search customer..." oninput="renderCustomers()"></div>
+<div id="clist" style="margin-top:10px"></div>
+</div>
 </div>
 <div id="admin" class="screen hidden">
 <div class="card">
@@ -81,6 +86,13 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <button onclick="go('sales')" data-s="sales"><b>≡</b>Sales</button>
 <button onclick="go('customers')" data-s="customers"><b>♙</b>Customers</button>
 </div></nav>
+<div id="customerModal" class="modal" onclick="if(event.target===this)closeCustomerModal()">
+<div class="modal-box">
+<h3>Edit Customer</h3><p class="muted">Update the customer name and current outstanding due.</p>
+<label>Customer Name</label><input id="editCustomerName" placeholder="Customer name">
+<label>Outstanding Due (₹)</label><input id="editCustomerDue" type="number" min="0" step="0.01" placeholder="0">
+<div class="modal-actions"><button class="light" onclick="closeCustomerModal()">Cancel</button><button class="primary" onclick="saveCustomerEdit()">Save Changes</button></div>
+</div></div>
 <div id="toast" class="toast"></div>
 <script>
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
@@ -218,21 +230,53 @@ function render(){
 async function renderCustomers(){
  const el=document.getElementById('clist');if(!el)return;
  const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
- const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+s.total);
+ const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+Number(s.total||0));
  const names=[...new Set([...businessCustomers.map(x=>x.name),...Object.keys(map)])].filter(n=>n.toLowerCase().includes(q));
- el.innerHTML=names.map(n=>{const x=businessCustomers.find(c=>c.name===n);return `<div class="item"><div class="row"><b>${esc(n)}</b><span class="badge due">${money(map[n]||0)} due</span></div><div class="actions"><button class="light" onclick="editCustomer('${x?.id||''}','${esc(n).replace(/'/g,"&#39;")}')">Edit</button><button class="light" onclick="deleteCustomer('${x?.id||''}','${esc(n).replace(/'/g,"&#39;")}')">Delete</button></div></div>`}).join('')||'<p class="muted">No customers found.</p>';
+ el.innerHTML=names.map(n=>{
+   const x=businessCustomers.find(c=>c.name===n);
+   const due=x?Number(x.due_amount||0):Number(map[n]||0);
+   const safe=esc(n).replace(/'/g,"&#39;");
+   return `<div class="customer-card">
+     <div class="customer-top"><div><div class="customer-name">${esc(n)}</div><div class="customer-meta">${x?'Customer record':'From credit sales'}</div></div>
+     <div class="customer-due">${money(due)}<div class="customer-meta" style="text-align:right">DUE</div></div></div>
+     <div class="customer-actions">
+       <button class="edit-btn" onclick="editCustomer('${x?.id||''}','${safe}',${due})">✎ Edit</button>
+       <button class="delete-btn" onclick="deleteCustomer('${x?.id||''}','${safe}')">🗑 Delete</button>
+     </div>
+   </div>`
+ }).join('')||'<p class="muted">No customers found.</p>';
 }
-async function editCustomer(id,currentName){
- const name=prompt('Enter new customer name:',currentName);if(name===null)return;
- const n=name.trim();if(!n){msg('Customer name is required');return}
- if(id){const {error}=await sb.from('customers').update({name:n}).eq('id',id);if(error){msg(error.message);return}}
- else{const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return} const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n});if(error){msg(error.message);return}}
- await load();msg('Customer updated');
+let editingCustomerId='';
+async function editCustomer(id,currentName,currentDue){
+ editingCustomerId=id||'';
+ document.getElementById('editCustomerName').value=currentName||'';
+ document.getElementById('editCustomerDue').value=Number(currentDue||0);
+ if(!id) editingCustomerId='';
+ document.getElementById('customerModal').classList.add('open');
+ setTimeout(()=>document.getElementById('editCustomerName').focus(),50);
+}
+function closeCustomerModal(){document.getElementById('customerModal').classList.remove('open');editingCustomerId=''}
+async function saveCustomerEdit(){
+ const n=document.getElementById('editCustomerName').value.trim();
+ const due=Number(document.getElementById('editCustomerDue').value);
+ if(!n){msg('Customer name is required');return}
+ if(!Number.isFinite(due)||due<0){msg('Enter a valid due amount');return}
+ if(editingCustomerId){
+   const {error}=await sb.from('customers').update({name:n,due_amount:due}).eq('id',editingCustomerId);
+   if(error){msg(error.message);return}
+ }else{
+   const {data:sd}=await sb.auth.getSession();
+   if(!sd.session){msg('Please log in again');return}
+   const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,due_amount:due});
+   if(error){msg(error.message);return}
+ }
+ closeCustomerModal();await load();msg('Customer updated');
 }
 async function deleteCustomer(id,currentName){
- if(!confirm('Delete this customer?'))return;
- if(id){const {error}=await sb.from('customers').delete().eq('id',id);if(error){msg(error.message);return}}
- else{msg('This customer comes from a previous sale. Edit it first to create a customer record, then delete it.');return}
+ if(!id){msg('Edit this customer first to save a customer record.');return}
+ if(!confirm('Delete '+currentName+'?'))return;
+ const {error}=await sb.from('customers').delete().eq('id',id);
+ if(error){msg(error.message);return}
  await load();msg('Customer deleted');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}

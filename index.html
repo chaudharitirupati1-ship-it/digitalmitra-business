@@ -89,6 +89,14 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <button onclick="go('sales')" data-s="sales"><b>≡</b>Sales</button>
 <button onclick="go('customers')" data-s="customers"><b>♙</b>Customers</button>
 </div></nav>
+<div id="adminCustomerModal" class="modal" onclick="if(event.target===this)closeAdminCustomerModal()">
+<div class="modal-box">
+<h3>Edit Customer Account</h3><p class="muted">Update the shop name, login email or expiry date.</p>
+<label>Customer / Shop Name</label><input id="adminEditBiz" placeholder="Shop name">
+<label>Login Email</label><input id="adminEditEmail" type="email" placeholder="Login email">
+<label>Account Expiry</label><input id="adminEditExpiry" type="date">
+<div class="modal-actions"><button class="light" onclick="closeAdminCustomerModal()">Cancel</button><button class="primary" onclick="saveAdminCustomerEdit()">Save Changes</button></div>
+</div></div>
 <div id="customerModal" class="modal" onclick="if(event.target===this)closeCustomerModal()">
 <div class="modal-box">
 <h3>Edit Customer</h3><p class="muted">Update the customer name and current outstanding due.</p>
@@ -171,9 +179,29 @@ async function loadCustomers(){
  <div class="row"><span><b>${esc(x.business_name)}</b><br><small>${esc(x.email)}</small></span><span class="badge ${x.status==='active'?'':'due'}">${x.status}</span></div>
  <small>Expiry: ${x.expires_at||'No expiry'}</small>
  <div class="actions">
+ <button class="light" onclick="editAdminCustomer('${x.id}','${esc(x.business_name)}','${esc(x.email)}','${x.expires_at||''}')">✎ Edit</button>
  <button class="light" onclick="toggleCustomer('${x.id}','${x.status}')">${x.status==='active'?'Suspend':'Activate'}</button>
  <button class="light" onclick="resetCustomer('${x.id}')">Reset Password</button>
  </div></div>`).join('')||'<p class="muted">No customers yet.</p>';
+}
+let editingAdminCustomerId='';
+function editAdminCustomer(id,biz,email,expiry){
+ editingAdminCustomerId=id;
+ document.getElementById('adminEditBiz').value=biz||'';
+ document.getElementById('adminEditEmail').value=email||'';
+ document.getElementById('adminEditExpiry').value=expiry||'';
+ document.getElementById('adminCustomerModal').classList.add('open');
+}
+function closeAdminCustomerModal(){document.getElementById('adminCustomerModal').classList.remove('open');editingAdminCustomerId=''}
+async function saveAdminCustomerEdit(){
+ const business_name=document.getElementById('adminEditBiz').value.trim();
+ const email=document.getElementById('adminEditEmail').value.trim();
+ const expires_at=document.getElementById('adminEditExpiry').value||null;
+ if(!business_name){msg('Shop name is required');return}
+ if(!email||!email.includes('@')){msg('Valid email is required');return}
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'update',id:editingAdminCustomerId,business_name,email,expires_at}});
+ if(error||data?.error){msg(error?.message||data?.error||'Update failed');return}
+ closeAdminCustomerModal();await loadCustomers();msg('Customer updated');
 }
 async function createCustomer(){
  const business_name=document.getElementById('aeBiz').value.trim(),email=document.getElementById('aeEmail').value.trim(),password=document.getElementById('aePw').value,expires_at=document.getElementById('aeExpiry').value||null;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#17365D"><title>DigitalMitra Business</title>
+<meta name="theme-color" content="#17365D"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><title>DigitalMitra Business</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--n:#17365D;--b:#2F75B5;--g:#548235;--bg:#f5f7fa;--t:#17202a;--m:#667085;--line:#e5e7eb}
@@ -19,7 +19,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </style><!-- Vercel redeploy trigger -->
 </head>
 <body>
-<header><h1>DigitalMitra Business</h1><p id="biz">Cloud Business Management</p></header>
+<header><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><h1>DigitalMitra Business</h1><p id="biz">Cloud Business Management</p></div><button id="installBtn" class="light hidden" onclick="installApp()" style="padding:9px 12px">📲 Install App</button></div></header>
 <main>
 <section id="auth" class="view active">
 <div class="card auth">
@@ -39,7 +39,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div class="actions"><button class="primary" onclick="go('sale')">＋ New Sale</button><button class="green" onclick="go('products')">＋ Product</button></div>
 <div class="card"><h2>Low Stock</h2><div id="low"></div></div>
-<div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p><button id="adminBtn" class="primary hidden" style="width:100%;margin-top:10px" onclick="go('admin')">⚙ Admin Panel</button></div>
+<div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p><button id="homeInstallBtn" class="light hidden" style="width:100%;margin-top:10px" onclick="installApp()">📲 Install DigitalMitra on this phone</button><button id="adminBtn" class="primary hidden" style="width:100%;margin-top:10px" onclick="go('admin')">⚙ Admin Panel</button></div>
 </div>
 <div id="sale" class="screen hidden">
 <div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
@@ -118,7 +118,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <script>
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);\nlet deferredInstallPrompt=null;\nwindow.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;document.getElementById('installBtn')?.classList.remove('hidden');document.getElementById('homeInstallBtn')?.classList.remove('hidden')});\nwindow.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;document.getElementById('installBtn')?.classList.add('hidden');document.getElementById('homeInstallBtn')?.classList.add('hidden');msg('DigitalMitra installed successfully')});\nasync function installApp(){if(!deferredInstallPrompt){msg('If Install is not shown, open Chrome menu ⋮ and choose Add to Home screen.');return}deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;if(choice.outcome==='accepted')msg('Installing DigitalMitra...');deferredInstallPrompt=null}\nif('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 let products=[],sales=[],businessCustomers=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}

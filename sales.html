@@ -35,6 +35,9 @@
 <section class="section"><div class="wrap"><div class="center"><h2>Frequently asked questions</h2></div><div class="faq"><details><summary>Will my data remain after I change or delete the app?</summary><p class="muted">Your business records are stored in the cloud and linked to your account, so reinstalling the app does not by itself erase them.</p></details><details><summary>Do I get my own login?</summary><p class="muted">Yes. DigitalMitra creates an individual account for each purchasing business.</p></details><details><summary>Can I use it on my phone?</summary><p class="muted">Yes. The interface is designed for mobile use.</p></details><details><summary>Can I manage customer credit?</summary><p class="muted">Yes. You can record credit sales and manage customer outstanding dues.</p></details></div></div></section>
 <footer class="footer"><div class="wrap">© 2026 DigitalMitra Business · Simple tools for small businesses</div></footer>
 <script>
+const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
+const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let selected={plan:'',amount:0,url:''};
 function selectPlan(plan,amount,url){
  selected={plan,amount,url};
@@ -53,9 +56,18 @@ function continuePayment(){
  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){m.textContent='Please enter a valid email or leave it blank.';return}
  const params=new URLSearchParams({dm_name:name,dm_contact:contact,dm_plan:selected.plan,dm_amount:String(selected.amount)});
  if(email)params.set('dm_email',email);
- try{sessionStorage.setItem('digitalmitra_checkout',JSON.stringify({name,contact,email,plan:selected.plan,amount:selected.amount,created_at:new Date().toISOString()}))}catch(e){}
- m.textContent='Opening secure Razorpay payment...';
- window.open(selected.url,'_blank','noopener');
+ sb.from('checkout_intents').insert({
+  plan:selected.plan,
+  amount:selected.amount,
+  business_name:name,
+  contact:contact,
+  email:email||null
+}).then(({error})=>{
+  if(error){m.textContent='Could not save your contact details. Please try again.';return}
+  try{sessionStorage.setItem('digitalmitra_checkout',JSON.stringify({name,contact,email,plan:selected.plan,amount:selected.amount,created_at:new Date().toISOString()}))}catch(e){}
+  m.textContent='Opening secure Razorpay payment...';
+  window.open(selected.url,'_blank','noopener');
+});
 }
 </script>
 </body></html>

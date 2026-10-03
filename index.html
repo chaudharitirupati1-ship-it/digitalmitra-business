@@ -202,16 +202,17 @@ async function loadPaidOrders(){
  box.innerHTML=(data||[]).map(x=>`<div class="item">
  <div class="row"><span><b>₹${Number(x.amount||0).toLocaleString('en-IN')}</b> · ${esc(x.plan)}</span><span class="badge">${esc(x.status)}</span></div>
  <small>${esc(x.customer_name||'Customer')}</small><br><small>${esc(x.email||'Email not received')}</small>${x.contact?'<br><small>'+esc(x.contact)+'</small>':''}<br><small>${new Date(x.created_at).toLocaleString('en-IN')}</small>
- ${!x.user_id?'<div class="actions"><button class="primary" onclick="createLoginFromPayment(\''+x.id+'\',\''+esc(x.customer_name||'New Customer').replace(/'/g,"&#39;")+'\')">Create Login</button></div>':''}
+ ${!x.user_id?'<div class="actions"><button class="primary" onclick="createLoginFromPayment(\''+x.id+'\',\''+esc(x.customer_name||'New Customer').replace(/'/g,"&#39;")+'\',\''+x.plan+'\')">Create Login</button></div>':''}
  </div>`).join('')||'<p class="muted">No paid orders yet.</p>';
 }
-async function createLoginFromPayment(orderId,businessName){
+async function createLoginFromPayment(orderId,businessName,plan){
  const email=prompt('Customer email address:');
  if(!email||!email.includes('@')){msg('Valid customer email is required');return}
  const password=prompt('Temporary password to give the customer (minimum 6 characters):');
  if(!password||password.length<6){msg('Password must be at least 6 characters');return}
- const expires=document.getElementById('adminEditExpiry')?.value||null;
- const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'create',business_name:businessName,email,password,expires_at:null}});
+ let expires_at=null;
+ if(plan!=='lifetime'){const d=new Date();d.setUTCDate(d.getUTCDate()+(plan==='yearly'?365:30));expires_at=d.toISOString().slice(0,10)}
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'create',business_name:businessName,email,password,expires_at}});
  if(error||data?.error){msg(error?.message||data?.error||'Account creation failed');return}
  const userId=data?.customer?.id;
  if(!userId){msg('Account created but user id was not returned');return}

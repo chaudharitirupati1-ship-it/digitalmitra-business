@@ -196,10 +196,29 @@ async function load(){
 }
 async function loadPaidOrders(){
  if(currentProfile?.role!=='admin') return;
- const {data,error}=await sb.from('payment_orders').select('id,amount,plan,email,contact,status,created_at,user_id').order('created_at',{ascending:false}).limit(50);
+ const {data,error}=await sb.from('payment_orders').select('id,amount,plan,email,contact,customer_name,status,created_at,user_id').order('created_at',{ascending:false}).limit(50);
  const box=document.getElementById('paidOrdersList');
  if(error){box.innerHTML='<p class="muted">'+esc(error.message)+'</p>';return}
- box.innerHTML=(data||[]).map(x=>`<div class="item"><div class="row"><span><b>₹${Number(x.amount||0).toLocaleString('en-IN')}</b> · ${esc(x.plan)}</span><span class="badge">${esc(x.status)}</span></div><small>${esc(x.email||'Email not received')}</small><br><small>${new Date(x.created_at).toLocaleString('en-IN')}</small></div>`).join('')||'<p class="muted">No paid orders yet.</p>';
+ box.innerHTML=(data||[]).map(x=>`<div class="item">
+ <div class="row"><span><b>₹${Number(x.amount||0).toLocaleString('en-IN')}</b> · ${esc(x.plan)}</span><span class="badge">${esc(x.status)}</span></div>
+ <small>${esc(x.customer_name||'Customer')}</small><br><small>${esc(x.email||'Email not received')}</small>${x.contact?'<br><small>'+esc(x.contact)+'</small>':''}<br><small>${new Date(x.created_at).toLocaleString('en-IN')}</small>
+ ${!x.user_id?'<div class="actions"><button class="primary" onclick="createLoginFromPayment(\''+x.id+'\',\''+esc(x.customer_name||'New Customer').replace(/'/g,"&#39;")+'\')">Create Login</button></div>':''}
+ </div>`).join('')||'<p class="muted">No paid orders yet.</p>';
+}
+async function createLoginFromPayment(orderId,businessName){
+ const email=prompt('Customer email address:');
+ if(!email||!email.includes('@')){msg('Valid customer email is required');return}
+ const password=prompt('Temporary password to give the customer (minimum 6 characters):');
+ if(!password||password.length<6){msg('Password must be at least 6 characters');return}
+ const expires=document.getElementById('adminEditExpiry')?.value||null;
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'create',business_name:businessName,email,password,expires_at:null}});
+ if(error||data?.error){msg(error?.message||data?.error||'Account creation failed');return}
+ const userId=data?.customer?.id;
+ if(!userId){msg('Account created but user id was not returned');return}
+ const linked=await sb.functions.invoke('admin-customers',{body:{action:'link_payment_order',order_id:orderId,user_id:userId}});
+ if(linked.error||linked.data?.error){msg(linked.error?.message||linked.data?.error||'Account created but payment link failed');return}
+ alert('Login created successfully.\\n\\nLogin: '+email+'\\nPassword: '+password+'\\n\\nSend these credentials to the customer securely.');
+ await loadPaidOrders();await loadCustomers();
 }
 async function loadCustomers(){
  if(currentProfile?.role!=='admin') return;

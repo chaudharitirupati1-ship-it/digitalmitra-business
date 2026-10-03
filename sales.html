@@ -3,6 +3,65 @@
 <meta name="description" content="DigitalMitra Business helps small shops manage sales, stock, customers, credit and profit from one simple mobile app.">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#f7f9fc;color:#14213d}a{text-decoration:none}.wrap{max-width:1100px;margin:auto;padding:0 20px}.nav{height:70px;display:flex;align-items:center;justify-content:space-between}.logo{font-size:22px;font-weight:900;color:#174a82}.logo span{color:#2f7dc4}.nav a{color:#174a82;font-weight:700}.hero{padding:58px 0 70px;background:linear-gradient(135deg,#edf6ff,#fff)}.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:45px;align-items:center}.pill{display:inline-block;background:#e2f0ff;color:#1762a0;border-radius:999px;padding:8px 13px;font-weight:800;font-size:13px}.hero h1{font-size:clamp(40px,6vw,64px);line-height:1.02;margin:18px 0}.hero h1 span{color:#2677bd}.hero p{font-size:19px;line-height:1.6;color:#596579}.buttons{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}.btn{display:inline-block;padding:15px 22px;border-radius:12px;font-weight:850}.primary{background:#2879bd;color:white}.secondary{background:white;color:#174a82;border:1px solid #d7e1ec}.phone{background:#173f6d;border-radius:28px;padding:15px;box-shadow:0 25px 60px #173f6d33}.screen{background:white;border-radius:19px;overflow:hidden}.screen-head{background:#173f6d;color:#fff;padding:20px;font-weight:850}.screen-body{padding:15px}.stat{display:flex;justify-content:space-between;background:#f5f8fb;padding:15px;border-radius:12px;margin:9px 0}.section{padding:70px 0}.center{text-align:center}.section h2{font-size:36px;margin:0 0 12px}.muted{color:#667085;line-height:1.6}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}.feature,.price{background:white;border:1px solid #e4eaf1;border-radius:18px;padding:24px;box-shadow:0 7px 24px #152b4510}.icon{font-size:30px}.feature h3{margin:12px 0 6px}.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:32px}.price{position:relative}.price.highlight{border:2px solid #2879bd;transform:translateY(-5px)}.price h3{font-size:22px}.amount{font-size:38px;font-weight:900;color:#174a82}.price ul{padding-left:20px;line-height:2}.badge{position:absolute;right:18px;top:18px;background:#e4f2ff;color:#1762a0;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:900}.cta{background:#173f6d;color:white;border-radius:24px;padding:45px;text-align:center}.cta h2{font-size:36px;margin:0 0 10px}.cta p{color:#dbeafe}.faq{max-width:760px;margin:30px auto}.faq details{background:#fff;border:1px solid #e4eaf1;border-radius:12px;padding:17px;margin:10px 0}.faq summary{font-weight:800;cursor:pointer}.footer{padding:35px 0;color:#667085;text-align:center}.note{font-size:12px;color:#7a8494;margin-top:10px}.buybox{max-width:520px;margin:20px auto 0;background:#fff;border:1px solid #dfe7ef;border-radius:18px;padding:20px;text-align:left;box-shadow:0 10px 30px #173f6d12}.buybox h3{margin:0 0 6px}.buybox label{display:block;font-size:13px;font-weight:800;margin:13px 0 6px}.buybox input{width:100%;padding:13px;border:1px solid #d0d5dd;border-radius:10px;font-size:15px}.buybox .hint{font-size:12px;color:#667085;margin-top:5px}.buybox button{width:100%;border:0;padding:14px;border-radius:11px;font-weight:850;font-size:15px;margin-top:16px;cursor:pointer}.selected{outline:3px solid #b9dcf7}@media(max-width:800px){.hero-grid,.features,.pricing{grid-template-columns:1fr}.hero{padding-top:35px}.price.highlight{transform:none}.nav a{display:none}}
+
+/* DigitalMitra 2026 premium interface */
+:root{--dm-navy:#0b1730;--dm-blue:#2563eb;--dm-sky:#38bdf8;--dm-bg:#f6f8fc;--dm-text:#0f172a;--dm-muted:#64748b;--dm-card:#ffffff;--dm-border:#e7edf5}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--dm-bg);color:var(--dm-text)}
+.wrap{max-width:1180px;padding:0 22px}
+header{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(226,232,240,.8)}
+.nav{height:72px}
+.logo{font-size:20px;color:var(--dm-navy);letter-spacing:-.4px}
+.logo span{color:var(--dm-blue)}
+.nav a{background:#eff6ff;color:#1d4ed8;padding:9px 14px;border-radius:10px;font-size:14px}
+.hero{padding:74px 0 82px;background:radial-gradient(circle at 85% 20%,#dbeafe 0,transparent 32%),linear-gradient(180deg,#fff 0%,#f4f8ff 100%)}
+.hero-grid{grid-template-columns:1.08fr .92fr;gap:65px}
+.pill{background:#eaf3ff;color:#1d4ed8;border:1px solid #d5e7ff;padding:9px 14px}
+.hero h1{font-size:clamp(42px,6vw,70px);letter-spacing:-2.8px;color:#0b1730;margin:20px 0 18px}
+.hero h1 span{background:linear-gradient(90deg,#2563eb,#0ea5e9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:18px;max-width:650px;color:#64748b}
+.buttons .btn{padding:14px 20px;border-radius:13px;transition:.2s}
+.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);box-shadow:0 10px 24px #2563eb30}
+.primary:hover{transform:translateY(-2px)}
+.secondary{border:1px solid #dbe4ef;background:#fff}
+.phone{background:linear-gradient(145deg,#0b1730,#18386b);border-radius:32px;padding:13px;box-shadow:0 30px 80px #0b173045;transform:rotate(1deg)}
+.screen{border-radius:23px}
+.screen-head{background:linear-gradient(135deg,#174a82,#2563eb);padding:22px}
+.screen-body{padding:18px}
+.stat{background:#f7faff;border:1px solid #edf2f7;padding:16px;margin:10px 0}
+.section{padding:84px 0}
+.section h2{font-size:clamp(30px,4vw,42px);letter-spacing:-1.2px;color:#0b1730}
+.features{gap:18px;margin-top:38px}
+.feature,.price{border:1px solid var(--dm-border);border-radius:20px;box-shadow:0 12px 35px #0f172a0a;transition:.2s}
+.feature:hover,.price:hover{transform:translateY(-4px);box-shadow:0 18px 45px #0f172a12}
+.feature{padding:27px}
+.icon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:#eff6ff;font-size:25px}
+.feature h3{color:#172554;font-size:18px}
+.pricing{gap:20px}
+.price{padding:28px}
+.price.highlight{border:2px solid #60a5fa;box-shadow:0 20px 50px #2563eb18}
+.amount{font-size:44px;letter-spacing:-1px}
+.price ul{color:#475569;line-height:2.05}
+.badge{background:#2563eb;color:#fff}
+.cta{background:linear-gradient(135deg,#0b1730,#173f6d);border-radius:28px;padding:55px 25px;box-shadow:0 25px 60px #0b173033}
+.buybox{border-radius:20px;border:1px solid #dce6f1;box-shadow:0 20px 50px #0b17301c;padding:25px}
+.buybox input{background:#fbfdff;border:1px solid #d7e0eb;transition:.15s}
+.buybox input:focus{outline:3px solid #dbeafe;border-color:#60a5fa}
+.buybox button{box-shadow:0 10px 25px #2563eb30}
+.faq details{border:1px solid var(--dm-border);box-shadow:0 7px 22px #0f172a08}
+.footer{background:#fff;border-top:1px solid #e8edf3}
+.note{color:#64748b}
+@media(max-width:800px){
+ .hero{padding:48px 0 60px}
+ .hero-grid{gap:35px}
+ .hero h1{letter-spacing:-1.8px}
+ .phone{max-width:420px;margin:auto}
+ .section{padding:62px 0}
+ .features,.pricing{grid-template-columns:1fr}
+ .price.highlight{transform:none}
+ .cta{padding:38px 18px}
+ .cta h2{font-size:30px}
+ .buybox{padding:20px}
+}
 </style></head>
 <body>
 <header><div class="wrap nav"><div class="logo">Digital<span>Mitra</span> Business</div><a href="#pricing">Pricing</a></div></header>

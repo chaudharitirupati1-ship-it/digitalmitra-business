@@ -122,6 +122,9 @@ header{background:rgba(255,255,255,.82);backdrop-filter:blur(20px);-webkit-backd
  .feature,.price{border-radius:18px}
  .cta{padding:40px 18px}
 }
+
+/* ===== Customer comments ===== */
+.comments-wrap{max-width:900px;margin:32px auto 0}.comment-form{background:#fff;border:1px solid #dce6f1;border-radius:22px;padding:24px;box-shadow:0 15px 45px rgba(15,23,42,.06);margin-bottom:24px}.comment-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.comment-form label{display:block;font-size:13px;font-weight:800;margin:0 0 6px}.comment-form input,.comment-form textarea{width:100%;padding:13px;border:1px solid #d7e0eb;border-radius:12px;font:inherit;background:#fbfdff}.comment-form textarea{min-height:105px;resize:vertical}.comment-form input:focus,.comment-form textarea:focus{outline:3px solid #dbeafe;border-color:#60a5fa}.comment-form button{border:0;cursor:pointer}.rating{display:flex;gap:7px;margin:8px 0 0}.star{border:1px solid #dbeafe;background:#f8fbff;border-radius:10px;padding:7px 10px;cursor:pointer;font-size:18px}.star.active{background:#eff6ff;border-color:#60a5fa}.comments-list{display:grid;gap:14px}.comment-card{background:#fff;border:1px solid #e5ebf3;border-radius:18px;padding:20px;box-shadow:0 9px 28px rgba(15,23,42,.045)}.comment-top{display:flex;justify-content:space-between;gap:12px;align-items:center}.comment-name{font-weight:900;color:#172554}.comment-date{font-size:12px;color:#94a3b8}.comment-stars{letter-spacing:1px;color:#f59e0b;margin:8px 0}.comment-text{color:#596579;line-height:1.65;margin:0}.comment-empty{text-align:center;color:#94a3b8;padding:25px}.comment-msg{font-size:13px;margin-top:10px;color:#64748b}@media(max-width:800px){.comment-grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header><div class="wrap nav"><div class="logo">Digital<span>Mitra</span> Business</div><a href="#pricing">Pricing</a></div></header>
@@ -151,9 +154,33 @@ header{background:rgba(255,255,255,.82);backdrop-filter:blur(20px);-webkit-backd
 <p id="buyMsg" class="note" style="color:#dbeafe"></p>
 </div>
 <div class="note" style="color:#cbd5e1">Payment is securely processed by Razorpay. Your contact details are collected first so DigitalMitra can identify and contact you after payment.</div></div></div></section>
+<section class="section" id="comments"><div class="wrap"><div class="center"><span class="pill">Customer feedback</span><h2>What business owners say</h2><p class="muted">Share your experience with DigitalMitra or ask a question.</p></div><div class="comments-wrap"><div class="comment-form"><div class="comment-grid"><div><label for="commentName">Your Name *</label><input id="commentName" maxlength="60" placeholder="e.g. Rahul Patil"></div><div><label>Rating</label><div class="rating" id="ratingPicker"><button type="button" class="star active" data-rating="5">★</button><button type="button" class="star" data-rating="4">★</button><button type="button" class="star" data-rating="3">★</button><button type="button" class="star" data-rating="2">★</button><button type="button" class="star" data-rating="1">★</button></div></div></div><label for="commentText" style="display:block;margin-top:14px">Comment *</label><textarea id="commentText" maxlength="500" placeholder="Tell us about your experience..."></textarea><button class="btn primary" style="margin-top:14px" onclick="submitComment()">Post Comment</button><div id="commentMsg" class="comment-msg"></div></div><div id="commentsList" class="comments-list"><div class="comment-empty">Loading comments...</div></div></div></div></section>
 <section class="section"><div class="wrap"><div class="center"><h2>Frequently asked questions</h2></div><div class="faq"><details><summary>Will my data remain after I change or delete the app?</summary><p class="muted">Your business records are stored in the cloud and linked to your account, so reinstalling the app does not by itself erase them.</p></details><details><summary>Do I get my own login?</summary><p class="muted">Yes. DigitalMitra creates an individual account for each purchasing business.</p></details><details><summary>Can I use it on my phone?</summary><p class="muted">Yes. The interface is designed for mobile use.</p></details><details><summary>Can I manage customer credit?</summary><p class="muted">Yes. You can record credit sales and manage customer outstanding dues.</p></details></div></div></section>
 <footer class="footer"><div class="wrap">© 2026 DigitalMitra Business · Simple tools for small businesses</div></footer>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+let selectedRating=5;
+function initComments(){
+ document.querySelectorAll('#ratingPicker .star').forEach(btn=>btn.addEventListener('click',()=>{selectedRating=Number(btn.dataset.rating);document.querySelectorAll('#ratingPicker .star').forEach(s=>s.classList.toggle('active',Number(s.dataset.rating)===selectedRating));}));
+ loadComments();
+}
+async function loadComments(){
+ const list=document.getElementById('commentsList'); if(!list)return;
+ const {data,error}=await sb.from('sales_comments').select('name,comment,rating,created_at').order('created_at',{ascending:false}).limit(30);
+ if(error){list.innerHTML='<div class="comment-empty">Comments will appear here soon.</div>';return;}
+ if(!data.length){list.innerHTML='<div class="comment-empty">Be the first to share your feedback.</div>';return;}
+ list.innerHTML=data.map(x=>'<article class="comment-card"><div class="comment-top"><div class="comment-name">'+escapeHtml(x.name)+'</div><div class="comment-date">'+new Date(x.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</div></div><div class="comment-stars">'+('★'.repeat(x.rating))+'<span style="color:#e2e8f0">'+('★'.repeat(5-x.rating))+'</span></div><p class="comment-text">'+escapeHtml(x.comment)+'</p></article>').join('');
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+async function submitComment(){
+ const name=document.getElementById('commentName').value.trim(),comment=document.getElementById('commentText').value.trim(),msg=document.getElementById('commentMsg');
+ if(!name){msg.textContent='Please enter your name.';return} if(comment.length<3){msg.textContent='Please write a little more in your comment.';return}
+ msg.textContent='Posting...';
+ const {error}=await sb.from('sales_comments').insert({name,comment,rating:selectedRating});
+ if(error){console.error(error);msg.textContent='Could not post your comment. Please try again.';return}
+ document.getElementById('commentName').value='';document.getElementById('commentText').value='';selectedRating=5;document.querySelectorAll('#ratingPicker .star').forEach(s=>s.classList.toggle('active',Number(s.dataset.rating)===5));msg.textContent='Thanks! Your comment has been posted.';loadComments();
+}
+document.addEventListener('DOMContentLoaded',initComments);
+</script>
 <script>
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';

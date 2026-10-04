@@ -43,7 +43,16 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div id="sale" class="screen hidden">
 <div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
-<label>Customer</label><input id="customer" placeholder="Customer name">
+<label>Customer</label>
+<div style="display:flex;gap:8px;align-items:center">
+ <input id="customer" placeholder="Customer name" oninput="customerNameChanged()" onblur="customerNameChanged()" style="flex:1">
+ <button type="button" class="light" onclick="pickSaleCustomerContact()" style="white-space:nowrap">👤 Contact</button>
+</div>
+<div id="saleCustomerHint" class="muted" style="margin-top:5px"></div>
+<div id="saleCustomerMobileWrap" class="hidden">
+ <label style="margin-top:8px">WhatsApp / Mobile Number</label>
+ <input id="saleCustomerMobile" type="tel" inputmode="numeric" placeholder="10-digit mobile number" oninput="saleMobileChanged()">
+</div>
 <label>Product</label><select id="product" onchange="preview()"></select>
 <label>Quantity</label><input id="qty" type="number" min="1" value="1" oninput="preview()">
 <label>Payment</label><select id="payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Other</option></select>
@@ -322,13 +331,74 @@ function preview(){
  document.getElementById('price').textContent=money(p?.selling_price);document.getElementById('total').textContent=money((p?.selling_price||0)*q);
  document.getElementById('profit2').textContent=money(((p?.selling_price||0)-(p?.cost_price||0))*q);document.getElementById('stock').textContent=(p?.stock||0)-q
 }
+let saleCustomerContactTimer=null;
+function normalizedCustomerName(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ')}
+function findBusinessCustomerByName(name){
+ const key=normalizedCustomerName(name);
+ return businessCustomers.find(c=>normalizedCustomerName(c.name)===key);
+}
+function customerNameChanged(){
+ const name=document.getElementById('customer')?.value||'';
+ const hint=document.getElementById('saleCustomerHint');
+ const wrap=document.getElementById('saleCustomerMobileWrap');
+ const input=document.getElementById('saleCustomerMobile');
+ const customer=findBusinessCustomerByName(name);
+ if(customer?.mobile_number){
+  input.value=String(customer.mobile_number).replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'');
+  wrap.classList.remove('hidden');
+  hint.textContent='✓ Saved customer number found.';
+  return;
+ }
+ if(name.trim()){
+  wrap.classList.remove('hidden');
+  hint.textContent='If the customer is in your phone contacts, tap 👤 Contact. Otherwise enter the number below.';
+ }else{
+  wrap.classList.add('hidden');
+  input.value='';
+  hint.textContent='';
+ }
+}
+function saleMobileChanged(){
+ const input=document.getElementById('saleCustomerMobile');
+ if(input) input.value=input.value.replace(/\D/g,'').slice(0,10);
+}
+async function pickSaleCustomerContact(){
+ const typedName=document.getElementById('customer').value.trim();
+ if(!navigator.contacts?.select){
+  msg('Contact picker is not supported. Enter the number manually.');
+  document.getElementById('saleCustomerMobile').focus();
+  return;
+ }
+ try{
+  const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
+  const contact=contacts?.[0];
+  const number=contact?.tel?.find(Boolean)||'';
+  const pickedName=Array.isArray(contact?.name)?(contact.name[0]||''):String(contact?.name||'');
+  if(!number){msg('No mobile number found for that contact');return}
+  document.getElementById('customer').value=pickedName||typedName;
+  document.getElementById('saleCustomerMobile').value=String(number).replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').slice(0,10);
+  document.getElementById('saleCustomerMobileWrap').classList.remove('hidden');
+  document.getElementById('saleCustomerHint').textContent='✓ Contact number selected.';
+  msg('Contact selected');
+ }catch(e){
+  if(e?.name!=='AbortError') msg('Could not open contacts. Enter the number manually.');
+ }
+}
+
 async function saveSale(){
  const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0,pay=document.getElementById('payment').value,customerName=document.getElementById('customer').value.trim()||'Walk-in Customer';
+ const mobileInput=document.getElementById('saleCustomerMobile');
+ const mobile=mobileInput?.value.trim()||'';
+ if(customerName!=='Walk-in Customer' && mobile && mobile.length!==10){msg('Enter a valid 10-digit customer mobile number');return}
  if(!p||q<=0){msg('Select product and quantity');return}
  if(q>p.stock){msg('Not enough stock');return}
  const {data,error}=await sb.rpc('create_sale',{p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
  if(error){msg(error.message);return}
- document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
+ document.getElementById('customer').value='';
+ document.getElementById('saleCustomerMobile').value='';
+ document.getElementById('saleCustomerMobileWrap').classList.add('hidden');
+ document.getElementById('saleCustomerHint').textContent='';
+ document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
  await load();msg('Sale saved');go('home')
 }
 let pendingWhatsAppSaleId='';

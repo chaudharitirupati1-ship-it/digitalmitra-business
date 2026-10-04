@@ -102,7 +102,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="modal-box">
 <h3>Edit Customer</h3><p class="muted">Update the customer name and current outstanding due.</p>
 <label>Customer Name</label><input id="editCustomerName" placeholder="Customer name">
-<label>WhatsApp / Mobile Number</label><input id="editCustomerMobile" type="tel" inputmode="numeric" placeholder="e.g. 9876543210">
+<label>WhatsApp / Mobile Number</label><div style="display:flex;gap:8px"><input id="editCustomerMobile" type="tel" inputmode="numeric" placeholder="e.g. 9876543210" style="flex:1"><button type="button" class="light" onclick="pickCustomerContact()" style="white-space:nowrap">👤 Contacts</button></div>
 <label>Outstanding Due (₹)</label><input id="editCustomerDue" type="number" min="0" step="0.01" placeholder="0">
 <div class="modal-actions"><button class="light" onclick="closeCustomerModal()">Cancel</button><button class="primary" onclick="saveCustomerEdit()">Save Changes</button></div>
 </div></div>
@@ -401,6 +401,21 @@ async function editCustomer(id,currentName,currentDue,mobile){
  setTimeout(()=>document.getElementById('editCustomerName').focus(),50);
 }
 function closeCustomerModal(){document.getElementById('customerModal').classList.remove('open');editingCustomerId=''}
+async function pickCustomerContact(){
+ const input=document.getElementById('editCustomerMobile');
+ if(!('contacts' in navigator)&&!navigator.contacts?.select){msg('Contact picker is not supported here. Enter the number manually.');return}
+ try{
+  const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
+  const contact=contacts?.[0];
+  const number=contact?.tel?.find(Boolean)||'';
+  if(number){
+   input.value=number.replace(/\\D/g,'').replace(/^91(?=\\d{10}$)/,'');
+   msg('Contact selected');
+  }else msg('No mobile number found for that contact');
+ }catch(e){
+  if(e?.name!=='AbortError') msg('Could not open contacts. You can enter the number manually.');
+ }
+}
 async function saveCustomerEdit(){
  const n=document.getElementById('editCustomerName').value.trim();
  const due=Number(document.getElementById('editCustomerDue').value);

@@ -40,13 +40,13 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card metric"><span>Profit</span><strong id="profit">₹0</strong></div>
 <div class="card metric"><span>Customer Due</span><strong id="due">₹0</strong></div>
 </div>
-<div class="actions"><button class="primary" onclick="go('sale')">＋ New Sale</button><button class="green" onclick="go('products')">＋ Product</button></div>
+<div class="actions"><button class="primary" onclick="go('sales')">＋ New Sale</button><button class="green" onclick="go('products')">＋ Product</button></div>
 <div class="card"><h2>Low Stock</h2><div id="low"></div></div>
 <div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p><button id="homeInstallBtn" class="light hidden" style="width:100%;margin-top:10px" onclick="installApp()">📲 Install DigitalMitra on this phone</button><button id="adminBtn" class="primary hidden" style="width:100%;margin-top:10px" onclick="go('admin')">⚙ Admin Panel</button></div>
 </div>
-<div id="sale" class="screen hidden">
+<div id="sales" class="screen hidden">
 <div class="card sale-card">
- <div class="sale-title"><div class="sale-icon">🧾</div><div><h2 style="margin:0">New Sale</h2><p class="muted sale-sub">Create a sale in a few seconds</p></div></div>
+ <div class="sale-title"><div class="sale-icon">🧾</div><div><h2 style="margin:0">Sales</h2><p class="muted sale-sub">Create a sale and manage your sales history</p></div></div>
 
  <div class="sale-section">
   <div class="sale-section-title">👤 CUSTOMER</div>
@@ -80,6 +80,12 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 
  <div class="actions sale-actions"><button class="light" onclick="go('home')">Cancel</button><button class="primary" onclick="saveSale()">✓ Save Sale</button></div>
 </div>
+<div class="card sales-card" style="margin-top:14px">
+ <div class="sales-title"><div class="sales-icon">📋</div><div><h2 style="margin:0">Sales History</h2><p class="muted sales-sub">Track invoices, payments and customer dues</p></div></div>
+ <div class="sales-toolbar"><button class="sales-clear" onclick="clearAllSales()">🗑 Clear All</button></div>
+ <div id="slist" class="sales-list"></div>
+ <p class="muted sales-footer">💬 Tap <b>Share WhatsApp</b> to send the invoice directly to your customer.</p>
+</div>
 </div>
 <div id="products" class="screen hidden">
 <div class="card"><h2>Products</h2>
@@ -112,12 +118,6 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div class="card service-card"><h2>Service History</h2><p class="muted">Your recent service jobs</p><div id="serviceList"></div></div>
 </div>
-<div id="sales" class="screen hidden"><div class="card sales-card">
- <div class="sales-title"><div class="sales-icon">📋</div><div><h2 style="margin:0">Sales History</h2><p class="muted sales-sub">Track invoices, payments and customer dues</p></div></div>
- <div class="sales-toolbar"><button class="sales-clear" onclick="clearAllSales()">🗑 Clear All</button></div>
- <div id="slist" class="sales-list"></div>
- <p class="muted sales-footer">💬 Tap <b>Share WhatsApp</b> to send the invoice directly to your customer.</p>
-</div></div>
 <div id="customers" class="screen hidden">
 <div class="card">
 <div class="customer-head"><div><h2>Customers</h2><p class="muted" style="margin:0">Manage customer names and outstanding dues</p></div></div>
@@ -142,10 +142,9 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </main>
 <nav id="nav" class="nav hidden"><div class="navin">
 <button onclick="go('home')" data-s="home" class="active"><b>⌂</b>Home</button>
-<button onclick="go('sale')" data-s="sale"><b>＋</b>Sale</button>
 <button onclick="go('products')" data-s="products"><b>□</b>Products</button>
 <button onclick="go('services')" data-s="services"><b>🛠</b>Services</button>
-<button onclick="go('sales')" data-s="sales"><b>≡</b>Sales</button>
+<button onclick="go('sales')" data-s="sales"><b>＋</b>Sales</button>
 <button onclick="go('customers')" data-s="customers"><b>♙</b>Customers</button>
 </div></nav>
 <div id="adminCustomerModal" class="modal" onclick="if(event.target===this)closeAdminCustomerModal()">

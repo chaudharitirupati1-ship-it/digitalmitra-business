@@ -326,9 +326,30 @@ function shareSaleWhatsApp(id){
  const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
  if(customer?.mobile_number) mobile=String(customer.mobile_number).replace(/\D/g,'');
  if(!mobile){
-  const entered=prompt('Enter customer WhatsApp/mobile number (10 digits):','');
-  if(!entered)return;
-  mobile=entered.replace(/\D/g,'');
+  if(navigator.contacts?.select){
+   try{
+    const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
+    const contact=contacts?.[0];
+    const picked=contact?.tel?.find(Boolean)||'';
+    if(!picked){msg('No mobile number found for that contact');return}
+    mobile=String(picked).replace(/\D/g,'');
+    if(mobile.length===10) mobile='91'+mobile;
+    const pickedName=Array.isArray(contact?.name)?(contact.name[0]||''):String(contact?.name||'');
+    const customerRecord=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+    if(customerRecord){
+     await sb.from('customers').update({mobile_number:mobile}).eq('id',customerRecord.id);
+     customerRecord.mobile_number=mobile;
+    }
+    msg(pickedName?'Contact selected':'Contact number selected');
+   }catch(e){
+    if(e?.name==='AbortError')return;
+    msg('Could not open contacts. Please add the customer number from Customers.');
+    return;
+   }
+  }else{
+   msg('Contact picker is not supported. Add the number from Customers.');
+   return;
+  }
  }
  if(mobile.length===10) mobile='91'+mobile;
  if(mobile.length<10){msg('Enter a valid customer mobile number');return}

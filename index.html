@@ -367,7 +367,7 @@ async function resetCustomer(id){
  if(error||data?.error){msg(error?.message||data?.error||'Reset failed');return}
  msg('Password reset successfully');
 }
-function go(id,updateHash=true){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));if(updateHash){history.replaceState(null,'','#'+id)}render();if(id==='sale')preview()}
+function go(id,updateHash=true){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));if(updateHash){history.replaceState(null,'','#'+id)}render();if(id==='sales')preview()}
 async function addProduct(){
  const name=document.getElementById('pn').value.trim(),cost=+document.getElementById('pc').value,sell=+document.getElementById('ps').value,stock=+document.getElementById('po').value,reorder=+document.getElementById('pr').value;
  if(!name){msg('Enter product name');return}

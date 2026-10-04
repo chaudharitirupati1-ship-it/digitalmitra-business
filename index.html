@@ -317,7 +317,7 @@ async function saveSale(){
  document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
  await load();msg('Sale saved');go('home')
 }
-function shareSaleWhatsApp(id){
+async function shareSaleWhatsApp(id){
  const s=sales.find(x=>x.id===id);
  if(!s){msg('Sale not found');return}
  const pname=products.find(p=>p.id===s.product_id)?.name||'Product';

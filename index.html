@@ -408,9 +408,11 @@ async function pickCustomerContact(){
   const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
   const contact=contacts?.[0];
   const number=contact?.tel?.find(Boolean)||'';
+  const name=Array.isArray(contact?.name)?(contact.name[0]||''):String(contact?.name||'');
   if(number){
    input.value=number.replace(/\\D/g,'').replace(/^91(?=\\d{10}$)/,'');
-   msg('Contact selected');
+   if(name) document.getElementById('editCustomerName').value=name;
+   msg(name?'Contact selected':'Contact number selected');
   }else msg('No mobile number found for that contact');
  }catch(e){
   if(e?.name!=='AbortError') msg('Could not open contacts. You can enter the number manually.');

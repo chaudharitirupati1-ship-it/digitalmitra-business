@@ -292,8 +292,8 @@ async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
  products=p.data||[];
  const cu=await sb.from('customers').select('*').order('name'); if(cu.error){msg(cu.error.message);return} businessCustomers=cu.data||[];
- const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);if(s.error){msg('Could not load sales: '+s.error.message);return} sales=s.data||[];
- const cp=await sb.from('customer_payments').select('*').order('created_at',{ascending:false}).limit(500);if(cp.error){msg('Could not load customer payments: '+cp.error.message);return} customerPayments=cp.data||[];
+ const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(1000);if(s.error){msg('Could not load sales: '+s.error.message);return} sales=s.data||[];
+ const cp=await sb.from('customer_payments').select('*').order('created_at',{ascending:false}).limit(1000);if(cp.error){msg('Could not load customer payments: '+cp.error.message);return} customerPayments=cp.data||[];
  const sv=await sb.from('services').select('*').order('created_at',{ascending:false}).limit(100);if(sv.error){msg(sv.error.message);return} services=sv.data||[];
  render();
 }

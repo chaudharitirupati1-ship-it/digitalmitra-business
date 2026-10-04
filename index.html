@@ -503,15 +503,17 @@ async function saveSale(){
  if(q>p.stock){msg('Not enough stock');return}
  const {data,error}=await sb.rpc('create_sale',{p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
  if(error){msg(error.message);return}
- if(customerName!=='Walk-in Customer' && mobile){
+ if(customerName!=='Walk-in Customer'){
   const existing=findBusinessCustomerByName(customerName);
   if(existing){
-   const {error:customerError}=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);
-   if(!customerError) existing.mobile_number=mobile;
+   if(mobile){
+    const {error:customerError}=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);
+    if(!customerError) existing.mobile_number=mobile;
+   }
   }else{
    const {data:sd}=await sb.auth.getSession();
    if(sd.session){
-    const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,due_amount:0,mobile_number:mobile}).select('*').single();
+    const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,due_amount:0,mobile_number:mobile||null}).select('*').single();
     if(!customerError && newCustomer) businessCustomers.push(newCustomer);
    }
   }

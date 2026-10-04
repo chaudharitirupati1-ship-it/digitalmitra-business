@@ -508,12 +508,6 @@ async function saveSale(){
   if(existing){
    const {error:customerError}=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);
    if(!customerError) existing.mobile_number=mobile;
-  }else{
-   const {data:sd}=await sb.auth.getSession();
-   if(sd.session){
-    const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile}).select('*').single();
-    if(!customerError && newCustomer) businessCustomers.push(newCustomer);
-   }
   }
  }
  document.getElementById('customer').value='';
@@ -581,7 +575,7 @@ async function sendPendingWhatsApp(){
  }
  const s=sales.find(x=>x.id===id);
  const customerName=(s?.customer_name||'Walk-in Customer').trim();
- const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+ const customer=s?.customer_id?businessCustomers.find(c=>c.id===s.customer_id):businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
  if(customer){
   const {error}=await sb.from('customers').update({mobile_number:mobile}).eq('id',customer.id);
   if(!error) customer.mobile_number=mobile;
@@ -618,8 +612,7 @@ async function saveService(){
  const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return}
  const existing=findBusinessCustomerByName(customerName); if(customerName!=='Walk-in Customer'&&!existing){const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile||null}).select('*').single();if(customerError){msg(customerError.message);return}businessCustomers.push(newCustomer)} const customer=findBusinessCustomerByName(customerName); const {data,error}=await sb.from('services').insert({user_id:sd.session.user.id,customer_id:customer?.id||null,customer_name:customerName,mobile_number:mobile||null,service_name:serviceName,price,cost,payment_method:payment,status,notes:notes||null}).select('*').single();
  if(error){msg(error.message);return}
- const existing=findBusinessCustomerByName(customerName);
- if(customerName!=='Walk-in Customer'&&mobile){if(existing){const r=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);if(!r.error)existing.mobile_number=mobile}else{const r=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile}).select('*').single();if(!r.error&&r.data)businessCustomers.push(r.data)}}
+ if(customerName!=='Walk-in Customer'&&mobile){if(existing){const r=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);if(!r.error)existing.mobile_number=mobile}}
  services.unshift(data);
  ['serviceCustomer','serviceMobile','serviceName','servicePrice','serviceCost','serviceNotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('serviceStatus').value='Pending';document.getElementById('servicePayment').value='Cash';document.getElementById('serviceMobileWrap').classList.add('hidden');render();msg('Service saved');
 }

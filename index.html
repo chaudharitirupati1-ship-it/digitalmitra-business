@@ -385,9 +385,48 @@ async function deleteCustomer(id,currentName){
  await load();msg('Customer deleted');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+let recoveryHandled=false;
+function hasRecoveryUrl(){
+ const raw=location.hash.replace(/^#/,'');
+ const q=new URLSearchParams(location.search);
+ return q.get('type')==='recovery'||new URLSearchParams(raw).get('type')==='recovery';
+}
+async function handleRecovery(){
+ if(recoveryHandled||!hasRecoveryUrl()) return false;
+ recoveryHandled=true;
+ let session=(await sb.auth.getSession()).data.session;
+ try{
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  const access_token=hash.get('access_token'),refresh_token=hash.get('refresh_token');
+  if(!session && access_token && refresh_token){
+   const r=await sb.auth.setSession({access_token,refresh_token});
+   session=r.data?.session||null;
+  }
+  const code=new URLSearchParams(location.search).get('code');
+  if(!session && code){
+   const r=await sb.auth.exchangeCodeForSession(code);
+   session=r.data?.session||null;
+  }
+ }catch(e){console.error('Recovery session error',e)}
+ if(session){
+  history.replaceState(null,'',location.pathname);
+  showApp();
+  await start();
+  setTimeout(()=>openSetPassword(true),300);
+  return true;
+ }
+ recoveryHandled=false;
+ document.getElementById('authMsg').textContent='The reset link could not be verified. Please request a new password reset email.';
+ return false;
+}
 sb.auth.onAuthStateChange(async(event,session)=>{
- if(event==='PASSWORD_RECOVERY' && session){showApp();await start();setTimeout(()=>openSetPassword(true),250);return}
+ if(event==='PASSWORD_RECOVERY' && session){recoveryHandled=true;history.replaceState(null,'',location.pathname);showApp();await start();setTimeout(()=>openSetPassword(true),300);return}
  if(session&&!products.length)await start();else if(!session)showAuth()
 });
-(async()=>{const {data}=await sb.auth.getSession();if(data.session)await start();else showAuth()})();
+(async()=>{
+ const recovered=await handleRecovery();
+ if(recovered)return;
+ const {data}=await sb.auth.getSession();
+ if(data.session)await start();else showAuth();
+})();
 </script></body></html>

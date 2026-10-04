@@ -360,7 +360,14 @@ function render(){
  document.getElementById('due').textContent=money(sales.filter(s=>s.payment_method==='Credit').reduce((a,s)=>a+s.total,0));
  document.getElementById('low').innerHTML=products.filter(p=>p.stock<=p.reorder_level).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div>`).join('')||'<p class="muted">No products.</p>';
- document.getElementById('slist').innerHTML=sales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';return `<div class="item"><div class="row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</small></span><b>${money(s.total)}</b></div><div class="actions"><button class="green" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div></div>`}).join('')||'<p class="muted">No sales.</p>';
+ const customerDueTotals={};sales.filter(x=>x.payment_method==='Credit').forEach(x=>{customerDueTotals[x.customer_name]=(customerDueTotals[x.customer_name]||0)+Number(x.total||0)});
+ const sortedSales=[...sales].sort((a,b)=>{
+   const ad=a.payment_method==='Credit'?1:0,bd=b.payment_method==='Credit'?1:0;
+   if(ad!==bd)return bd-ad;
+   if(ad)return (customerDueTotals[b.customer_name]||0)-(customerDueTotals[a.customer_name]||0);
+   return new Date(b.created_at)-new Date(a.created_at);
+ });
+ document.getElementById('slist').innerHTML=sortedSales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';const due=s.payment_method==='Credit'?customerDueTotals[s.customer_name]||0:0;return `<div class="item"><div class="row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</small></span><b>${money(s.total)}</b></div>${s.payment_method==='Credit'?'<div style="margin-top:7px;font-size:12px;color:#b42318;font-weight:700">Due: '+money(due)+'</div>':''}<div class="actions"><button class="green" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div></div>`}).join('')||'<p class="muted">No sales.</p>';
  renderCustomers();
 }
 async function renderCustomers(){

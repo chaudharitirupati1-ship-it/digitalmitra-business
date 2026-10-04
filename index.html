@@ -102,6 +102,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="modal-box">
 <h3>Edit Customer</h3><p class="muted">Update the customer name and current outstanding due.</p>
 <label>Customer Name</label><input id="editCustomerName" placeholder="Customer name">
+<label>WhatsApp / Mobile Number</label><input id="editCustomerMobile" type="tel" inputmode="numeric" placeholder="e.g. 9876543210">
 <label>Outstanding Due (₹)</label><input id="editCustomerDue" type="number" min="0" step="0.01" placeholder="0">
 <div class="modal-actions"><button class="light" onclick="closeCustomerModal()">Cancel</button><button class="primary" onclick="saveCustomerEdit()">Save Changes</button></div>
 </div></div>
@@ -320,24 +321,26 @@ function shareSaleWhatsApp(id){
  const s=sales.find(x=>x.id===id);
  if(!s){msg('Sale not found');return}
  const pname=products.find(p=>p.id===s.product_id)?.name||'Product';
+ const customerName=(s.customer_name||'Walk-in Customer').trim();
+ let mobile='';
+ const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+ if(customer?.mobile_number) mobile=String(customer.mobile_number).replace(/\D/g,'');
+ if(!mobile){
+  const entered=prompt('Enter customer WhatsApp/mobile number (10 digits):','');
+  if(!entered)return;
+  mobile=entered.replace(/\D/g,'');
+ }
+ if(mobile.length===10) mobile='91'+mobile;
+ if(mobile.length<10){msg('Enter a valid customer mobile number');return}
  const date=new Date(s.created_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
  const invoiceNo=String(s.id||'').slice(-8).toUpperCase();
  const business=currentProfile?.business_name||'DigitalMitra Business';
  const text=[
-  '🧾 *'+business+'*',
-  'Invoice: #'+invoiceNo,
-  'Date: '+date,
-  '',
-  'Customer: '+(s.customer_name||'Walk-in Customer'),
-  'Item: '+pname,
-  'Quantity: '+s.quantity,
-  'Payment: '+s.payment_method,
-  'Total: *'+money(s.total)+'*',
-  '',
+  '🧾 *'+business+'*','Invoice: #'+invoiceNo,'Date: '+date,'',
+  'Customer: '+customerName,'Item: '+pname,'Quantity: '+s.quantity,'Payment: '+s.payment_method,'Total: *'+money(s.total)+'*','',
   'Thank you for your business! 🙏'
  ].join('\n');
- const url='https://wa.me/?text='+encodeURIComponent(text);
- window.open(url,'_blank');
+ window.location.href='https://wa.me/'+mobile+'?text='+encodeURIComponent(text);
 }
 async function clearAllSales(){
  if(!sales.length){msg('No sales to clear');return}
@@ -369,20 +372,22 @@ async function renderCustomers(){
    const x=businessCustomers.find(c=>c.name===n);
    const due=x?Number(x.due_amount||0):Number(map[n]||0);
    const safe=esc(n).replace(/'/g,"&#39;");
+   const mobile=x?.mobile_number||'';
    return `<div class="customer-card">
-     <div class="customer-top"><div><div class="customer-name">${esc(n)}</div><div class="customer-meta">${x?'Customer record':'From credit sales'}</div></div>
+     <div class="customer-top"><div><div class="customer-name">${esc(n)}</div><div class="customer-meta">${x?'Customer record':'From credit sales'}${mobile?' · '+esc(mobile):''}</div></div>
      <div class="customer-due">${money(due)}<div class="customer-meta" style="text-align:right">DUE</div></div></div>
      <div class="customer-actions">
-       <button class="edit-btn" onclick="editCustomer('${x?.id||''}','${safe}',${due})">✎ Edit</button>
+       <button class="edit-btn" onclick="editCustomer('${x?.id||''}','${safe}',${due},'${esc(mobile).replace(/'/g,"&#39;")}')">✎ Edit</button>
        <button class="delete-btn" onclick="deleteCustomer('${x?.id||''}','${safe}')">🗑 Delete</button>
      </div>
    </div>`
  }).join('')||'<p class="muted">No customers found.</p>';
 }
 let editingCustomerId='';
-async function editCustomer(id,currentName,currentDue){
+async function editCustomer(id,currentName,currentDue,mobile){
  editingCustomerId=id||'';
  document.getElementById('editCustomerName').value=currentName||'';
+ document.getElementById('editCustomerMobile').value=mobile||'';
  document.getElementById('editCustomerDue').value=Number(currentDue||0);
  if(!id) editingCustomerId='';
  document.getElementById('customerModal').classList.add('open');
@@ -392,15 +397,16 @@ function closeCustomerModal(){document.getElementById('customerModal').classList
 async function saveCustomerEdit(){
  const n=document.getElementById('editCustomerName').value.trim();
  const due=Number(document.getElementById('editCustomerDue').value);
+ const mobile=document.getElementById('editCustomerMobile').value.trim();
  if(!n){msg('Customer name is required');return}
  if(!Number.isFinite(due)||due<0){msg('Enter a valid due amount');return}
  if(editingCustomerId){
-   const {error}=await sb.from('customers').update({name:n,due_amount:due}).eq('id',editingCustomerId);
+   const {error}=await sb.from('customers').update({name:n,due_amount:due,mobile_number:mobile}).eq('id',editingCustomerId);
    if(error){msg(error.message);return}
  }else{
    const {data:sd}=await sb.auth.getSession();
    if(!sd.session){msg('Please log in again');return}
-   const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,due_amount:due});
+   const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,due_amount:due,mobile_number:mobile});
    if(error){msg(error.message);return}
  }
  closeCustomerModal();await load();msg('Customer updated');

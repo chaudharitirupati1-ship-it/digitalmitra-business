@@ -336,6 +336,7 @@ async function loadCustomers(){
  <button class="light" onclick="editAdminCustomer('${x.id}','${esc(x.business_name)}','${esc(x.email)}','${x.expires_at||''}')">✎ Edit</button>
  <button class="light" onclick="toggleCustomer('${x.id}','${x.status}')">${x.status==='active'?'Suspend':'Activate'}</button>
  <button class="light" onclick="resetCustomer('${x.id}')">Reset Password</button>
+ <button class="light" style="background:#fff1f0;color:#b42318" onclick="deleteCustomerAccount('${x.id}','${esc(x.business_name).replace(/'/g,"&#39;")}')">🗑 Delete</button>
  </div></div>`).join('')||'<p class="muted">No customers yet.</p>';
 }
 let editingAdminCustomerId='';
@@ -378,6 +379,16 @@ async function resetCustomer(id){
  const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'reset_password',id,password:pw}});
  if(error||data?.error){msg(error?.message||data?.error||'Reset failed');return}
  msg('Password reset successfully');
+}
+async function deleteCustomerAccount(id,businessName){
+ if(!id)return;
+ const ok=confirm('Delete '+businessName+'? This will permanently delete the customer login and account. This action cannot be undone.');
+ if(!ok)return;
+ const {data,error}=await sb.functions.invoke('admin-customers',{body:{action:'delete',id}});
+ if(error||data?.error){msg(error?.message||data?.error||'Delete failed');return}
+ await loadCustomers();
+ await loadPaidOrders();
+ msg('Customer account deleted');
 }
 function go(id,updateHash=true){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));if(updateHash){history.replaceState(null,'','#'+id)}render();if(id==='sales')preview()}
 async function addProduct(){

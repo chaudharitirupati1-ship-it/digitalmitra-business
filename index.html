@@ -31,6 +31,13 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <label>Password</label><input id="password" type="password" placeholder="Minimum 6 characters">
 <div class="actions"><button class="primary" onclick="signIn()">Login</button></div>
 <p class="muted" style="margin-top:12px">Your DigitalMitra account is created and provided by DigitalMitra. You do not need to create an account yourself.</p><button class="light" style="width:100%;margin-top:8px" onclick="resetPassword()">Forgot password?</button><p id="authMsg" class="muted"></p>
+<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);text-align:center;font-size:12px">
+  <a href="/privacy.html" style="color:var(--b);text-decoration:none">Privacy Policy</a>
+  <span style="color:var(--m)"> · </span>
+  <a href="/terms.html" style="color:var(--b);text-decoration:none">Terms</a>
+  <span style="color:var(--m)"> · </span>
+  <a href="/support.html" style="color:var(--b);text-decoration:none">Support</a>
+</div>
 </div></section>
 <section id="app" class="view">
 <div id="home" class="screen">
@@ -139,6 +146,11 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card"><div class="customer-head"><div><h2>Paid Orders</h2><p class="muted" style="margin:0">Payments received through Razorpay</p></div><button class="light" onclick="loadPaidOrders()">Refresh</button></div><div id="paidOrdersList"></div></div>
 </div>
 </section>
+<div style="max-width:720px;margin:4px auto 16px;padding:0 12px;text-align:center;font-size:11px;color:var(--m)">
+  DigitalMitra Business · <a href="/privacy.html" style="color:var(--b);text-decoration:none">Privacy</a> ·
+  <a href="/terms.html" style="color:var(--b);text-decoration:none">Terms</a> ·
+  <a href="/support.html" style="color:var(--b);text-decoration:none">Support</a>
+</div>
 </main>
 <nav id="nav" class="nav hidden"><div class="navin">
 <button onclick="go('home')" data-s="home" class="active"><b>⌂</b>Home</button>

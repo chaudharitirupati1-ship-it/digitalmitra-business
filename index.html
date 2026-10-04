@@ -439,9 +439,9 @@ function preview(){
 }
 let saleCustomerContactTimer=null;
 function normalizedCustomerName(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ')}
-function customerCreditSalesTotal(name){const key=normalizedCustomerName(name);return sales.filter(s=>s.payment_method==='Credit'&&normalizedCustomerName(s.customer_name)===key).reduce((a,s)=>a+Number(s.total||0),0)}
+function customerCreditSalesTotal(name,id){const key=normalizedCustomerName(name);return sales.filter(s=>s.payment_method==='Credit'&&((id&&s.customer_id===id)||(!s.customer_id&&normalizedCustomerName(s.customer_name)===key))).reduce((a,s)=>a+Number(s.total||0),0)}
 function customerPaymentsTotal(id){return customerPayments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount||0),0)}
-function customerCurrentDue(customer){if(!customer)return 0;return Math.max(0,Number(customer.opening_due||0)+customerCreditSalesTotal(customer.name)-customerPaymentsTotal(customer.id))}
+function customerCurrentDue(customer){if(!customer)return 0;return Math.max(0,Number(customer.opening_due||0)+customerCreditSalesTotal(customer.name,customer.id)-customerPaymentsTotal(customer.id))}
 function findBusinessCustomerByName(name){
  const key=normalizedCustomerName(name);
  return businessCustomers.find(c=>normalizedCustomerName(c.name)===key);
@@ -501,7 +501,7 @@ async function saveSale(){
  if(customerName!=='Walk-in Customer' && mobile && mobile.length!==10){msg('Enter a valid 10-digit customer mobile number');return}
  if(!p||q<=0){msg('Select product and quantity');return}
  if(q>p.stock){msg('Not enough stock');return}
- const {data,error}=await sb.rpc('create_sale',{p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
+ const existing=findBusinessCustomerByName(customerName); if(customerName!=='Walk-in Customer'&&!existing){const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return}const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile||null}).select('*').single();if(customerError){msg(customerError.message);return}businessCustomers.push(newCustomer)} const customer=findBusinessCustomerByName(customerName); const {data,error}=await sb.rpc('create_sale',{p_customer_id:customer?.id||null,p_customer_name:customerName,p_product_id:p.id,p_quantity:q,p_payment_method:pay});
  if(error){msg(error.message);return}
  if(customerName!=='Walk-in Customer' && mobile){
   const existing=findBusinessCustomerByName(customerName);
@@ -528,7 +528,7 @@ async function shareSaleWhatsApp(id){
  const s=sales.find(x=>x.id===id);
  if(!s){msg('Sale not found');return}
  const customerName=(s.customer_name||'Walk-in Customer').trim();
- const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+ const customer=s.customer_id?businessCustomers.find(c=>c.id===s.customer_id):businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
  let mobile=customer?.mobile_number?String(customer.mobile_number).replace(/\D/g,''):'';
  if(mobile){
   sendSaleWhatsApp(id,mobile);
@@ -616,7 +616,7 @@ async function saveService(){
  const customerName=document.getElementById('serviceCustomer').value.trim()||'Walk-in Customer',mobile=document.getElementById('serviceMobile').value.trim(),serviceName=document.getElementById('serviceName').value.trim(),price=Number(document.getElementById('servicePrice').value||0),cost=Number(document.getElementById('serviceCost').value||0),payment=document.getElementById('servicePayment').value,status=document.getElementById('serviceStatus').value,notes=document.getElementById('serviceNotes').value.trim();
  if(!serviceName){msg('Enter service name');return} if(price<0||cost<0){msg('Enter valid price and cost');return} if(mobile&&mobile.length!==10){msg('Enter a valid 10-digit mobile number');return}
  const {data:sd}=await sb.auth.getSession();if(!sd.session){msg('Please log in again');return}
- const {data,error}=await sb.from('services').insert({user_id:sd.session.user.id,customer_name:customerName,mobile_number:mobile||null,service_name:serviceName,price,cost,payment_method:payment,status,notes:notes||null}).select('*').single();
+ const existing=findBusinessCustomerByName(customerName); if(customerName!=='Walk-in Customer'&&!existing){const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile||null}).select('*').single();if(customerError){msg(customerError.message);return}businessCustomers.push(newCustomer)} const customer=findBusinessCustomerByName(customerName); const {data,error}=await sb.from('services').insert({user_id:sd.session.user.id,customer_id:customer?.id||null,customer_name:customerName,mobile_number:mobile||null,service_name:serviceName,price,cost,payment_method:payment,status,notes:notes||null}).select('*').single();
  if(error){msg(error.message);return}
  const existing=findBusinessCustomerByName(customerName);
  if(customerName!=='Walk-in Customer'&&mobile){if(existing){const r=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);if(!r.error)existing.mobile_number=mobile}else{const r=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile}).select('*').single();if(!r.error&&r.data)businessCustomers.push(r.data)}}
@@ -646,28 +646,28 @@ function render(){
  const now=new Date(),ym=now.toISOString().slice(0,7),td=now.toISOString().slice(0,10);
  const ms=sales.filter(s=>s.created_at.slice(0,10).startsWith(ym)),ts=sales.filter(s=>s.created_at.slice(0,10)===td);
  document.getElementById('today').textContent=money(ts.reduce((a,s)=>a+s.total,0));document.getElementById('month').textContent=money(ms.reduce((a,s)=>a+s.total,0));document.getElementById('profit').textContent=money(ms.reduce((a,s)=>a+s.profit,0));
- const savedCustomerNames=new Set(businessCustomers.map(c=>normalizedCustomerName(c.name))); const savedCustomerDue=businessCustomers.reduce((a,c)=>a+customerCurrentDue(c),0); const unsavedCreditDue=sales.filter(s=>s.payment_method==='Credit'&&!savedCustomerNames.has(normalizedCustomerName(s.customer_name))).reduce((a,s)=>a+Number(s.total||0),0); document.getElementById('due').textContent=money(savedCustomerDue+unsavedCreditDue);
+ const savedCustomerDue=businessCustomers.reduce((a,c)=>a+customerCurrentDue(c),0); const unsavedCreditDue=sales.filter(s=>s.payment_method==='Credit'&&!s.customer_id).reduce((a,s)=>a+Number(s.total||0),0); document.getElementById('due').textContent=money(savedCustomerDue+unsavedCreditDue);
  document.getElementById('low').innerHTML=products.filter(p=>Number(p.stock)<5).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item"><div class="row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div><div class="product-actions"><button class="product-edit" onclick="editProduct('${p.id}')">✎ Edit</button><button class="product-delete" onclick="deleteProduct('${p.id}')">🗑 Delete</button></div></div>`).join('')||'<p class="muted">No products.</p>';
- const customerDueTotals={};sales.filter(x=>x.payment_method==='Credit').forEach(x=>{const k=normalizedCustomerName(x.customer_name);customerDueTotals[k]=(customerDueTotals[k]||0)+Number(x.total||0)});
+ const customerDueTotals={};sales.filter(x=>x.payment_method==='Credit').forEach(x=>{const k=x.customer_id||'name:'+normalizedCustomerName(x.customer_name);customerDueTotals[k]=(customerDueTotals[k]||0)+Number(x.total||0)});
  const sortedSales=[...sales].sort((a,b)=>{
    const ad=a.payment_method==='Credit'?1:0,bd=b.payment_method==='Credit'?1:0;
    if(ad!==bd)return bd-ad;
-   if(ad)return (customerDueTotals[normalizedCustomerName(b.customer_name)]||0)-(customerDueTotals[normalizedCustomerName(a.customer_name)]||0);
+   if(ad)return (customerDueTotals[b.customer_id||'name:'+normalizedCustomerName(b.customer_name)]||0)-(customerDueTotals[a.customer_id||'name:'+normalizedCustomerName(a.customer_name)]||0);
    return new Date(b.created_at)-new Date(a.created_at);
  });
- document.getElementById('slist').innerHTML=sortedSales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';const customer=businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(s.customer_name));const due=s.payment_method==='Credit'?(customer?customerCurrentDue(customer):customerDueTotals[normalizedCustomerName(s.customer_name)]||0):0;return `<div class="item"><div class="sales-item-top"><div><div class="sales-customer">${esc(s.customer_name)}</div><div class="sales-detail">${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</div></div><div class="sales-total">${money(s.total)}</div></div>${s.payment_method==='Credit'?'<div class="sales-due">Current Due: '+money(due)+'</div>':''}<button class="sales-share" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div>`}).join('')||'<div class="sales-empty muted">No sales yet.<br>Create your first sale from the Sale tab.</div>';
+ document.getElementById('slist').innerHTML=sortedSales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';const customer=s.customer_id?businessCustomers.find(c=>c.id===s.customer_id):businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(s.customer_name));const due=s.payment_method==='Credit'?(customer?customerCurrentDue(customer):customerDueTotals[s.customer_id||'name:'+normalizedCustomerName(s.customer_name)]||0):0;return `<div class="item"><div class="sales-item-top"><div><div class="sales-customer">${esc(s.customer_name)}</div><div class="sales-detail">${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</div></div><div class="sales-total">${money(s.total)}</div></div>${s.payment_method==='Credit'?'<div class="sales-due">Current Due: '+money(due)+'</div>':''}<button class="sales-share" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div>`}).join('')||'<div class="sales-empty muted">No sales yet.<br>Create your first sale from the Sale tab.</div>';
  renderServices();
  renderCustomers();
 }
 async function renderCustomers(){
  const el=document.getElementById('clist');if(!el)return;
  const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
- const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>{const k=normalizedCustomerName(s.customer_name);map[k]=(map[k]||0)+Number(s.total||0)});
+ const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>{const k=s.customer_id||'name:'+normalizedCustomerName(s.customer_name);map[k]=(map[k]||0)+Number(s.total||0)});
  const names=[...new Set([...businessCustomers.map(x=>x.name),...sales.filter(s=>s.payment_method==='Credit').map(s=>s.customer_name)])].filter(n=>n.toLowerCase().includes(q));
  el.innerHTML=names.map(n=>{
    const x=businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(n));
-   const due=x?customerCurrentDue(x):Number(map[normalizedCustomerName(n)]||0);
+   const due=x?customerCurrentDue(x):Number(map['name:'+normalizedCustomerName(n)]||0);
    const safe=esc(n).replace(/'/g,"&#39;");
    const mobile=x?.mobile_number||'';
    return `<div class="customer-card">

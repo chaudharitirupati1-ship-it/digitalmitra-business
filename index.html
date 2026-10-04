@@ -59,7 +59,7 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 </div>
 <div id="sales" class="screen hidden"><div class="card">
 <div class="customer-head"><div><h2>Sales</h2><p class="muted" style="margin:0">View your sales history</p></div><button class="delete-btn" onclick="clearAllSales()">🗑 Clear All</button></div>
-<div id="slist"></div>
+<div id="slist"></div><p class="muted" style="margin:10px 0 0">Tap <b>Share WhatsApp</b> on any sale to send a simple invoice to the customer.</p>
 </div></div>
 <div id="customers" class="screen hidden">
 <div class="card">
@@ -316,6 +316,29 @@ async function saveSale(){
  document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
  await load();msg('Sale saved');go('home')
 }
+function shareSaleWhatsApp(id){
+ const s=sales.find(x=>x.id===id);
+ if(!s){msg('Sale not found');return}
+ const pname=products.find(p=>p.id===s.product_id)?.name||'Product';
+ const date=new Date(s.created_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+ const invoiceNo=String(s.id||'').slice(-8).toUpperCase();
+ const business=currentProfile?.business_name||'DigitalMitra Business';
+ const text=[
+  '🧾 *'+business+'*',
+  'Invoice: #'+invoiceNo,
+  'Date: '+date,
+  '',
+  'Customer: '+(s.customer_name||'Walk-in Customer'),
+  'Item: '+pname,
+  'Quantity: '+s.quantity,
+  'Payment: '+s.payment_method,
+  'Total: *'+money(s.total)+'*',
+  '',
+  'Thank you for your business! 🙏'
+ ].join('\n');
+ const url='https://wa.me/?text='+encodeURIComponent(text);
+ window.open(url,'_blank');
+}
 async function clearAllSales(){
  if(!sales.length){msg('No sales to clear');return}
  const ok=confirm('Clear ALL sales history? This cannot be undone. Stock will not be restored.');
@@ -334,7 +357,7 @@ function render(){
  document.getElementById('due').textContent=money(sales.filter(s=>s.payment_method==='Credit').reduce((a,s)=>a+s.total,0));
  document.getElementById('low').innerHTML=products.filter(p=>p.stock<=p.reorder_level).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div>`).join('')||'<p class="muted">No products.</p>';
- document.getElementById('slist').innerHTML=sales.map(s=>`<div class="item row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(products.find(p=>p.id===s.product_id)?.name||'Product')} · ${s.payment_method}</small></span><b>${money(s.total)}</b></div>`).join('')||'<p class="muted">No sales.</p>';
+ document.getElementById('slist').innerHTML=sales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';return `<div class="item"><div class="row"><span><b>${esc(s.customer_name)}</b><br><small>${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</small></span><b>${money(s.total)}</b></div><div class="actions"><button class="green" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div></div>`}).join('')||'<p class="muted">No sales.</p>';
  renderCustomers();
 }
 async function renderCustomers(){

@@ -106,6 +106,20 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <label>Outstanding Due (₹)</label><input id="editCustomerDue" type="number" min="0" step="0.01" placeholder="0">
 <div class="modal-actions"><button class="light" onclick="closeCustomerModal()">Cancel</button><button class="primary" onclick="saveCustomerEdit()">Save Changes</button></div>
 </div></div>
+<div id="whatsappNumberModal" class="modal" onclick="if(event.target===this)closeWhatsAppNumberModal()">
+<div class="modal-box">
+<h3>Customer WhatsApp Number</h3>
+<p class="muted">This customer does not have a saved WhatsApp number. Enter it here or choose a phone contact.</p>
+<label>Mobile Number</label>
+<div style="display:flex;gap:8px">
+<input id="whatsappMobileInput" type="tel" inputmode="numeric" placeholder="e.g. 9876543210" style="flex:1">
+<button type="button" class="light" onclick="pickWhatsAppContact()" style="white-space:nowrap">👤 Contacts</button>
+</div>
+<div class="modal-actions">
+<button class="light" onclick="closeWhatsAppNumberModal()">Cancel</button>
+<button class="green" onclick="sendPendingWhatsApp()">💬 Send</button>
+</div>
+</div></div>
 <div id="toast" class="toast"></div><div id="setPasswordModal" class="modal" onclick="if(event.target===this)closeSetPassword()">
 <div class="modal-box">
 <h3>Set Your Password</h3>
@@ -317,42 +331,73 @@ async function saveSale(){
  document.getElementById('customer').value='';document.getElementById('qty').value=1;document.getElementById('payment').value='Cash';
  await load();msg('Sale saved');go('home')
 }
+let pendingWhatsAppSaleId='';
 async function shareSaleWhatsApp(id){
+ const s=sales.find(x=>x.id===id);
+ if(!s){msg('Sale not found');return}
+ const customerName=(s.customer_name||'Walk-in Customer').trim();
+ const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+ let mobile=customer?.mobile_number?String(customer.mobile_number).replace(/\D/g,''):'';
+ if(mobile){
+  sendSaleWhatsApp(id,mobile);
+  return;
+ }
+ pendingWhatsAppSaleId=id;
+ document.getElementById('whatsappMobileInput').value='';
+ document.getElementById('whatsappNumberModal').classList.add('open');
+ setTimeout(()=>document.getElementById('whatsappMobileInput').focus(),100);
+}
+function closeWhatsAppNumberModal(){
+ document.getElementById('whatsappNumberModal').classList.remove('open');
+ pendingWhatsAppSaleId='';
+}
+function normalizeMobile(value){
+ let mobile=String(value||'').replace(/\D/g,'');
+ if(mobile.length===10) mobile='91'+mobile;
+ if(mobile.startsWith('91')&&mobile.length===12) return mobile;
+ return mobile;
+}
+async function pickWhatsAppContact(){
+ if(!navigator.contacts?.select){
+  msg('Contact picker is not supported. Enter the number manually.');
+  return;
+ }
+ try{
+  const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
+  const contact=contacts?.[0];
+  const number=contact?.tel?.find(Boolean)||'';
+  if(!number){msg('No mobile number found for that contact');return}
+  document.getElementById('whatsappMobileInput').value=normalizeMobile(number).replace(/^91/,'');
+  msg('Contact selected');
+ }catch(e){
+  if(e?.name!=='AbortError') msg('Could not open contacts. Enter the number manually.');
+ }
+}
+async function sendPendingWhatsApp(){
+ const id=pendingWhatsAppSaleId;
+ if(!id)return;
+ const mobile=normalizeMobile(document.getElementById('whatsappMobileInput').value);
+ if(mobile.length!==12||!mobile.startsWith('91')){
+  msg('Enter a valid 10-digit Indian mobile number');
+  return;
+ }
+ const s=sales.find(x=>x.id===id);
+ const customerName=(s?.customer_name||'Walk-in Customer').trim();
+ const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
+ if(customer){
+  const {error}=await sb.from('customers').update({mobile_number:mobile}).eq('id',customer.id);
+  if(!error) customer.mobile_number=mobile;
+ }
+ closeWhatsAppNumberModal();
+ sendSaleWhatsApp(id,mobile);
+}
+function sendSaleWhatsApp(id,mobile){
  const s=sales.find(x=>x.id===id);
  if(!s){msg('Sale not found');return}
  const pname=products.find(p=>p.id===s.product_id)?.name||'Product';
  const customerName=(s.customer_name||'Walk-in Customer').trim();
- let mobile='';
- const customer=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
- if(customer?.mobile_number) mobile=String(customer.mobile_number).replace(/\D/g,'');
- if(!mobile){
-  if(navigator.contacts?.select){
-   try{
-    const contacts=await navigator.contacts.select(['name','tel'],{multiple:false});
-    const contact=contacts?.[0];
-    const picked=contact?.tel?.find(Boolean)||'';
-    if(!picked){msg('No mobile number found for that contact');return}
-    mobile=String(picked).replace(/\D/g,'');
-    if(mobile.length===10) mobile='91'+mobile;
-    const pickedName=Array.isArray(contact?.name)?(contact.name[0]||''):String(contact?.name||'');
-    const customerRecord=businessCustomers.find(c=>(c.name||'').trim().toLowerCase()===customerName.toLowerCase());
-    if(customerRecord){
-     await sb.from('customers').update({mobile_number:mobile}).eq('id',customerRecord.id);
-     customerRecord.mobile_number=mobile;
-    }
-    msg(pickedName?'Contact selected':'Contact number selected');
-   }catch(e){
-    if(e?.name==='AbortError')return;
-    msg('Could not open contacts. Please add the customer number from Customers.');
-    return;
-   }
-  }else{
-   msg('Contact picker is not supported. Add the number from Customers.');
-   return;
-  }
- }
- if(mobile.length===10) mobile='91'+mobile;
- if(mobile.length<10){msg('Enter a valid customer mobile number');return}
+ mobile=normalizeMobile(mobile);
+ if(mobile.length!==12||!mobile.startsWith('91')){msg('Enter a valid customer mobile number');return}
  const date=new Date(s.created_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
  const invoiceNo=String(s.id||'').slice(-8).toUpperCase();
  const business=currentProfile?.business_name||'DigitalMitra Business';
@@ -431,7 +476,7 @@ async function pickCustomerContact(){
   const number=contact?.tel?.find(Boolean)||'';
   const name=Array.isArray(contact?.name)?(contact.name[0]||''):String(contact?.name||'');
   if(number){
-   input.value=number.replace(/\\D/g,'').replace(/^91(?=\\d{10}$)/,'');
+   input.value=number.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'');
    if(name) document.getElementById('editCustomerName').value=name;
    msg(name?'Contact selected':'Contact number selected');
   }else msg('No mobile number found for that contact');

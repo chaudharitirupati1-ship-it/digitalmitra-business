@@ -118,7 +118,12 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <script>
 const SUPABASE_URL='https://xvqbcjkoogfwkbpodink.supabase.co';
 const SUPABASE_KEY='sb_publishable_p2OQLiiBQGvA44zhnrDDAw_aX27pChP';
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);\nlet deferredInstallPrompt=null;\nwindow.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;document.getElementById('installBtn')?.classList.remove('hidden');document.getElementById('homeInstallBtn')?.classList.remove('hidden')});\nwindow.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;document.getElementById('installBtn')?.classList.add('hidden');document.getElementById('homeInstallBtn')?.classList.add('hidden');msg('DigitalMitra installed successfully')});\nasync function installApp(){if(!deferredInstallPrompt){msg('If Install is not shown, open Chrome menu ⋮ and choose Add to Home screen.');return}deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;if(choice.outcome==='accepted')msg('Installing DigitalMitra...');deferredInstallPrompt=null}\nif('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;document.getElementById('installBtn')?.classList.remove('hidden');document.getElementById('homeInstallBtn')?.classList.remove('hidden')});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;document.getElementById('installBtn')?.classList.add('hidden');document.getElementById('homeInstallBtn')?.classList.add('hidden');msg('DigitalMitra installed successfully')});
+async function installApp(){if(!deferredInstallPrompt){msg('If Install is not shown, open Chrome menu ⋮ and choose Add to Home screen.');return}deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;if(choice.outcome==='accepted')msg('Installing DigitalMitra...');deferredInstallPrompt=null}
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 let products=[],sales=[],businessCustomers=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}

@@ -740,9 +740,19 @@ async function saveCustomerEdit(){
  }else{
    const {data:sd}=await sb.auth.getSession();
    if(!sd.session){msg('Please log in again');return}
-   const {data:newCustomer,error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,opening_due:due,due_amount:0,mobile_number:mobile||null}).select('*').single();
+   const {data:newCustomer,error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,opening_due:0,due_amount:0,mobile_number:mobile||null}).select('*').single();
    if(error){msg(error.message);return}
-   if(newCustomer)businessCustomers.push(newCustomer);
+   if(newCustomer){
+     businessCustomers.push(newCustomer);
+     const sr=await sb.from('sales').update({customer_id:newCustomer.id}).eq('user_id',sd.session.user.id).is('customer_id',null).eq('customer_name',n);
+     if(sr.error){msg('Customer created, but legacy sales could not be linked: '+sr.error.message);return}
+     const svr=await sb.from('services').update({customer_id:newCustomer.id}).eq('user_id',sd.session.user.id).is('customer_id',null).eq('customer_name',n);
+     if(svr.error){msg('Customer created, but legacy services could not be linked: '+svr.error.message);return}
+     const creditTotal=sales.filter(s=>s.payment_method==='Credit'&&!s.customer_id&&s.customer_name===n).reduce((a,s)=>a+Number(s.total||0),0);
+     const openingDue=Math.max(0,due-creditTotal);
+     const ur=await sb.from('customers').update({opening_due:openingDue}).eq('id',newCustomer.id);
+     if(ur.error){msg('Customer created, but opening balance could not be saved: '+ur.error.message);return}
+   }
  }
  closeCustomerModal();await load();msg('Customer updated');
 }

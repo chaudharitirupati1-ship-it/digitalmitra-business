@@ -663,21 +663,28 @@ function render(){
 async function renderCustomers(){
  const el=document.getElementById('clist');if(!el)return;
  const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
- const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>{const k=s.customer_id||'name:'+normalizedCustomerName(s.customer_name);map[k]=(map[k]||0)+Number(s.total||0)});
- const names=[...new Set([...businessCustomers.map(x=>x.name),...sales.filter(s=>s.payment_method==='Credit').map(s=>s.customer_name)])].filter(n=>n.toLowerCase().includes(q));
- el.innerHTML=names.map(n=>{
-   const x=businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(n));
-   const due=x?customerCurrentDue(x):Number(map['name:'+normalizedCustomerName(n)]||0);
-   const safe=esc(n).replace(/'/g,"&#39;");
-   const mobile=x?.mobile_number||'';
+ const orphanMap={};
+ sales.filter(s=>s.payment_method==='Credit'&&!s.customer_id).forEach(s=>{
+   const k=normalizedCustomerName(s.customer_name);
+   orphanMap[k]=(orphanMap[k]||0)+Number(s.total||0);
+ });
+ const records=businessCustomers
+   .filter(c=>String(c.name||'').toLowerCase().includes(q))
+   .map(c=>({id:c.id,name:c.name,mobile:c.mobile_number||'',due:customerCurrentDue(c),saved:true}));
+ const orphanNames=[...new Set(sales.filter(s=>s.payment_method==='Credit'&&!s.customer_id).map(s=>s.customer_name))]
+   .filter(n=>String(n||'').toLowerCase().includes(q));
+ orphanNames.forEach(n=>records.push({id:'',name:n,mobile:'',due:Number(orphanMap[normalizedCustomerName(n)]||0),saved:false}));
+ el.innerHTML=records.map(r=>{
+   const safe=esc(r.name).replace(/'/g,"&#39;");
+   const mobile=esc(r.mobile).replace(/'/g,"&#39;");
    return `<div class="customer-card">
-     <div class="customer-top"><div><div class="customer-name">${esc(n)}</div><div class="customer-meta">${x?'Customer record':'From credit sales'}${mobile?' · '+esc(mobile):''}</div></div>
-     <div class="customer-due">${money(due)}<div class="customer-meta" style="text-align:right">DUE</div></div></div>
+     <div class="customer-top"><div><div class="customer-name">${esc(r.name)}</div><div class="customer-meta">${r.saved?'Customer record':'Legacy credit sale'}${r.mobile?' · '+esc(r.mobile):''}</div></div>
+     <div class="customer-due">${money(r.due)}<div class="customer-meta" style="text-align:right">DUE</div></div></div>
      <div class="customer-actions">
-       <button class="edit-btn" onclick="editCustomer('${x?.id||''}','${safe}',${due},'${esc(mobile).replace(/'/g,"&#39;")}')">✎ Edit</button>
-       <button class="delete-btn" onclick="deleteCustomer('${x?.id||''}','${safe}')">🗑 Delete</button>
+       <button class="edit-btn" onclick="editCustomer('${r.id}','${safe}',${r.due},'${mobile}')">${r.saved?'✎ Edit':'＋ Create Record'}</button>
+       ${r.saved?`<button class="delete-btn" onclick="deleteCustomer('${r.id}','${safe}')">🗑 Delete</button>`:''}
      </div>
-   </div>`
+   </div>`;
  }).join('')||'<p class="muted">No customers found.</p>';
 }
 let editingCustomerId='';

@@ -682,10 +682,10 @@ async function renderCustomers(){
      <div class="customer-due">${money(due)}<div class="customer-meta" style="text-align:right">DUE</div></div></div>
      <div class="customer-payment-info">Paid: <b>${money(paid)}</b> · Credit sales: ${money(creditDue)}</div>
      <div class="customer-actions">
-       <button class="edit-btn" onclick="editCustomer('${customerId}','${safe}',${due},'${esc(mobile).replace(/'/g,"&#39;")}')">✎ Edit</button>
+       <button class="edit-btn" onclick="editCustomer('${customerId}','${safe}',${due},'${esc(mobile).replace(/'/g,"&#39;")}')">${x?'✎ Edit':'✎ Create Record'}</button>
        <button class="delete-btn" onclick="deleteCustomer('${customerId}','${safe}')">🗑 Delete</button>
      </div>
-     ${x?'<div class="payment-actions"><button class="pay-btn" onclick="openPaymentModal(\''+x.id+'\')">💰 Record Payment</button><button class="history-btn" onclick="viewPaymentHistory(\''+x.id+'\',\''+safe+'\')">📋 History</button></div>':''}
+     ${x?'<div class="payment-actions"><button class="pay-btn" onclick="openPaymentModal(\''+x.id+'\')">💰 Record Payment</button><button class="history-btn" onclick="viewPaymentHistory(\''+x.id+'\',\''+safe+'\')">📋 History</button></div>':'<div class="customer-meta" style="margin-top:10px">Save this as a customer record to enable payment and history.</div>'}
    </div>`
  }).join('')||'<p class="muted">No customers found.</p>';
 }
@@ -778,7 +778,7 @@ async function saveCustomerEdit(){
  closeCustomerModal();await load();msg('Customer updated');
 }
 async function deleteCustomer(id,currentName){
- if(!id){msg('Edit this customer first to save a customer record.');return}
+ if(!id){msg('This is only a credit-sale name, not a saved customer record. Use “Create Record” first.');return}
  if(!confirm('Delete '+currentName+'?'))return;
  const {error}=await sb.from('customers').delete().eq('id',id);
  if(error){msg(error.message);return}

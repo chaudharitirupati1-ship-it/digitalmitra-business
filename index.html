@@ -159,7 +159,14 @@ async function signIn(){
  }catch(err){document.getElementById('authMsg').textContent='Something went wrong: '+(err?.message||err)}
 }
 async function logout(){await sb.auth.signOut();showAuth()}
-function openSetPassword(){document.getElementById('setPasswordModal').classList.add('open');setTimeout(()=>document.getElementById('newAccountPassword').focus(),50)}
+function openSetPassword(recovery=false){
+ document.getElementById('setPasswordModal').classList.add('open');
+ document.querySelector('#setPasswordModal h3').textContent=recovery?'Reset Your Password':'Set Your Password';
+ document.querySelector('#setPasswordModal .muted').textContent=recovery?'Choose a new password for your DigitalMitra account.':'Your DigitalMitra account is ready. Create your own password to secure your account.';
+ document.querySelector('#setPasswordModal .modal-actions button').textContent=recovery?'Save New Password':'Set Password';
+ document.getElementById('setPasswordModal').dataset.recovery=recovery?'true':'false';
+ setTimeout(()=>document.getElementById('newAccountPassword').focus(),50)
+}
 function closeSetPassword(){document.getElementById('setPasswordModal').classList.remove('open')}
 async function setAccountPassword(){
  const p=document.getElementById('newAccountPassword').value;
@@ -168,9 +175,14 @@ async function setAccountPassword(){
  if(!p||p.length<6){m.textContent='Password must be at least 6 characters.';return}
  if(p!==c){m.textContent='Passwords do not match.';return}
  m.textContent='Saving...';
- const {error}=await sb.auth.updateUser({password:p,data:{...((await sb.auth.getUser()).data.user?.user_metadata||{}),payment_invite:false}});
+ const {data:userData}=await sb.auth.getUser();
+ const meta=userData.user?.user_metadata||{};
+ const isRecovery=document.getElementById('setPasswordModal').dataset.recovery==='true';
+ const nextMeta=isRecovery?meta:{...meta,payment_invite:false};
+ const {error}=await sb.auth.updateUser({password:p,data:nextMeta});
  if(error){m.textContent=error.message;return}
- closeSetPassword();msg('Password set successfully');
+ closeSetPassword();document.getElementById('newAccountPassword').value='';document.getElementById('confirmAccountPassword').value='';
+ msg(isRecovery?'Password reset successfully':'Password set successfully');
 }
 async function start(){
  const {data:sd}=await sb.auth.getSession();
@@ -373,6 +385,9 @@ async function deleteCustomer(id,currentName){
  await load();msg('Customer deleted');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!products.length)await start();else if(!session)showAuth()});
+sb.auth.onAuthStateChange(async(event,session)=>{
+ if(event==='PASSWORD_RECOVERY' && session){showApp();await start();setTimeout(()=>openSetPassword(true),250);return}
+ if(session&&!products.length)await start();else if(!session)showAuth()
+});
 (async()=>{const {data}=await sb.auth.getSession();if(data.session)await start();else showAuth()})();
 </script></body></html>

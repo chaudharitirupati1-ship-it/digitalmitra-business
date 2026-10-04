@@ -720,12 +720,12 @@ async function saveCustomerEdit(){
    if(!customer){msg('Customer record not found');return}
    const oldName=customer.name;
    if(normalizedCustomerName(oldName)!==normalizedCustomerName(n)){
-     const sr=await sb.from('sales').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_name',oldName);
-     if(sr.error){msg('Could not move sales to the new customer name: '+sr.error.message);return}
-     const svr=await sb.from('services').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_name',oldName);
-     if(svr.error){msg('Could not move services to the new customer name: '+svr.error.message);return}
+     const sr=await sb.from('sales').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_id',customer.id);
+     if(sr.error){msg('Could not update linked sales: '+sr.error.message);return}
+     const svr=await sb.from('services').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_id',customer.id);
+     if(svr.error){msg('Could not update linked services: '+svr.error.message);return}
    }
-   const creditTotal=customerCreditSalesTotal(n);
+   const creditTotal=customerCreditSalesTotal(n,customer.id);
    const paidTotal=customerPaymentsTotal(customer.id);
    const openingDue=Math.max(0,due-creditTotal+paidTotal);
    const {error}=await sb.from('customers').update({name:n,opening_due:openingDue,due_amount:0,mobile_number:mobile||null}).eq('id',editingCustomerId);

@@ -15,7 +15,8 @@ h2{margin:0 0 6px}.muted{font-size:12px;color:var(--m)}
 label{display:block;font-size:12px;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:10px;font-size:15px;background:white}
 button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:14px}.primary{background:var(--b);color:#fff}.green{background:var(--g);color:#fff}.light{background:#eaf2f8;color:var(--n)}
 .actions{display:flex;gap:8px;margin-top:15px}.actions>*{flex:1}.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.badge{font-size:11px;padding:4px 8px;border-radius:20px;background:#e2f0d9;color:#3d6b25}.due{background:#fdecec;color:#b42318}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:5}.navin{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}.nav button{background:none;color:var(--m);padding:9px 2px}.nav button.active{color:var(--b)}.nav b{display:block;font-size:18px}.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#17202a;color:#fff;padding:10px 14px;border-radius:9px;display:none;z-index:9}.auth{max-width:420px;margin:45px auto;padding:16px}.hidden{display:none!important}
-.customer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.customer-search{position:relative}.customer-search input{padding-left:40px}.customer-search span{position:absolute;left:13px;top:11px;color:var(--m);font-size:18px}.customer-card{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin:9px 0}.customer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.customer-name{font-size:16px;font-weight:800}.customer-due{font-size:17px;font-weight:800;color:#b42318}.customer-meta{font-size:12px;color:var(--m);margin-top:4px}.customer-actions{display:flex;gap:8px;margin-top:12px}.customer-actions button{flex:1}.edit-btn{background:#eef4ff;color:var(--n)}.delete-btn{background:#fff1f0;color:#b42318}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}.modal.open{display:flex}.modal-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:20px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}.modal-box h3{margin:0 0 4px;font-size:20px}.modal-actions{display:flex;gap:10px;margin-top:18px}.modal-actions button{flex:1}
+.sale-card{padding:18px}.sale-title{display:flex;align-items:center;gap:12px;margin-bottom:4px}.sale-icon{width:44px;height:44px;border-radius:14px;background:#eaf2f8;color:var(--b);display:grid;place-items:center;font-size:23px}.sale-sub{margin:0 0 18px}.sale-section{border:1px solid var(--line);border-radius:15px;padding:14px;margin-top:12px;background:#fff}.sale-section-title{font-size:13px;font-weight:800;color:var(--n);margin-bottom:9px}.sale-customer-row{display:flex;gap:8px;align-items:center}.sale-customer-row input{min-width:0}.sale-mobile{margin-top:9px}.sale-hint{font-size:11px;color:var(--m);margin-top:6px}.sale-summary{background:#f7f9fc;border:1px solid var(--line);border-radius:15px;padding:14px;margin-top:12px}.sale-summary .row{padding:4px 0}.sale-total{font-size:17px;padding-top:9px!important;margin-top:6px;border-top:1px solid var(--line)}.sale-actions{position:sticky;bottom:78px;background:linear-gradient(transparent,var(--bg) 18%);padding-top:16px;margin-top:2px}.sale-actions button{min-height:50px}
+.customer-head{position:relative}.customer-search input{padding-left:40px}.customer-search span{position:absolute;left:13px;top:11px;color:var(--m);font-size:18px}.customer-card{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin:9px 0}.customer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.customer-name{font-size:16px;font-weight:800}.customer-due{font-size:17px;font-weight:800;color:#b42318}.customer-meta{font-size:12px;color:var(--m);margin-top:4px}.customer-actions{display:flex;gap:8px;margin-top:12px}.customer-actions button{flex:1}.edit-btn{background:#eef4ff;color:var(--n)}.delete-btn{background:#fff1f0;color:#b42318}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}.modal.open{display:flex}.modal-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:20px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}.modal-box h3{margin:0 0 4px;font-size:20px}.modal-actions{display:flex;gap:10px;margin-top:18px}.modal-actions button{flex:1}
 </style><!-- Vercel redeploy trigger -->
 </head>
 <body>
@@ -42,22 +43,42 @@ button{border:0;border-radius:10px;padding:12px 14px;font-weight:750;font-size:1
 <div class="card"><div class="row"><h2>Account</h2><button class="light" onclick="logout()">Logout</button></div><p class="muted">Cloud synced account</p><button id="homeInstallBtn" class="light hidden" style="width:100%;margin-top:10px" onclick="installApp()">📲 Install DigitalMitra on this phone</button><button id="adminBtn" class="primary hidden" style="width:100%;margin-top:10px" onclick="go('admin')">⚙ Admin Panel</button></div>
 </div>
 <div id="sale" class="screen hidden">
-<div class="card"><h2>New Sale</h2><p class="muted">Save once. Stock and reports update automatically.</p>
-<label>Customer</label>
-<div style="display:flex;gap:8px;align-items:center">
- <input id="customer" placeholder="Customer name" oninput="customerNameChanged()" onblur="customerNameChanged()" style="flex:1">
- <button type="button" class="light" onclick="pickSaleCustomerContact()" style="white-space:nowrap">👤 Contact</button>
+<div class="card sale-card">
+ <div class="sale-title"><div class="sale-icon">🧾</div><div><h2 style="margin:0">New Sale</h2><p class="muted sale-sub">Create a sale in a few seconds</p></div></div>
+
+ <div class="sale-section">
+  <div class="sale-section-title">👤 CUSTOMER</div>
+  <div class="sale-customer-row">
+   <input id="customer" placeholder="Customer name" oninput="customerNameChanged()" onblur="customerNameChanged()">
+   <button type="button" class="light" onclick="pickSaleCustomerContact" style="display:none"></button>
+   <button type="button" class="light" onclick="pickSaleCustomerContact()" style="white-space:nowrap">👤 Contact</button>
+  </div>
+  <div id="saleCustomerHint" class="sale-hint">Enter a name, then add the WhatsApp number if needed.</div>
+  <div id="saleCustomerMobileWrap" class="hidden sale-mobile">
+   <input id="saleCustomerMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="WhatsApp / mobile number" oninput="saleMobileChanged()">
+  </div>
+ </div>
+
+ <div class="sale-section">
+  <div class="sale-section-title">📦 PRODUCT</div>
+  <select id="product" onchange="preview()"></select>
+  <div class="grid" style="margin-top:10px">
+   <div><label style="margin:0 0 5px">Quantity</label><input id="qty" type="number" min="1" value="1" oninput="preview()"></div>
+   <div><label style="margin:0 0 5px">Payment</label><select id="payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Other</option></select></div>
+  </div>
+ </div>
+
+ <div class="sale-summary">
+  <div class="sale-section-title">SALE SUMMARY</div>
+  <div class="row"><span>Unit Price</span><b id="price">₹0</b></div>
+  <div class="row"><span>Quantity</span><b id="summaryQty">1</b></div>
+  <div class="row"><span>Profit</span><b id="profit2">₹0</b></div>
+  <div class="row"><span>Stock after</span><b id="stock">0</b></div>
+  <div class="row sale-total"><span>Total</span><b id="total">₹0</b></div>
+ </div>
+
+ <div class="actions sale-actions"><button class="light" onclick="go('home')">Cancel</button><button class="primary" onclick="saveSale()">✓ Save Sale</button></div>
 </div>
-<div id="saleCustomerHint" class="muted" style="margin-top:5px"></div>
-<div id="saleCustomerMobileWrap" class="hidden">
- <label style="margin-top:8px">WhatsApp / Mobile Number</label>
- <input id="saleCustomerMobile" type="tel" inputmode="numeric" placeholder="10-digit mobile number" oninput="saleMobileChanged()">
-</div>
-<label>Product</label><select id="product" onchange="preview()"></select>
-<label>Quantity</label><input id="qty" type="number" min="1" value="1" oninput="preview()">
-<label>Payment</label><select id="payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option><option>Other</option></select>
-<div class="card" style="background:#f8fafc"><div class="row"><span>Price</span><b id="price">₹0</b></div><div class="row"><span>Total</span><b id="total">₹0</b></div><div class="row"><span>Profit</span><b id="profit2">₹0</b></div><div class="row"><span>Stock after</span><b id="stock">0</b></div></div>
-<div class="actions"><button class="light" onclick="go('home')">Cancel</button><button class="primary" onclick="saveSale()">Save Sale</button></div></div>
 </div>
 <div id="products" class="screen hidden">
 <div class="card"><h2>Products</h2>
@@ -329,7 +350,7 @@ async function addProduct(){
 function preview(){
  const p=products.find(x=>x.id===document.getElementById('product').value),q=+document.getElementById('qty').value||0;
  document.getElementById('price').textContent=money(p?.selling_price);document.getElementById('total').textContent=money((p?.selling_price||0)*q);
- document.getElementById('profit2').textContent=money(((p?.selling_price||0)-(p?.cost_price||0))*q);document.getElementById('stock').textContent=(p?.stock||0)-q
+ document.getElementById('profit2').textContent=money(((p?.selling_price||0)-(p?.cost_price||0))*q);document.getElementById('stock').textContent=(p?.stock||0)-q;document.getElementById('summaryQty').textContent=q
 }
 let saleCustomerContactTimer=null;
 function normalizedCustomerName(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ')}

@@ -208,7 +208,7 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredIns
 window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;document.getElementById('installBtn')?.classList.add('hidden');document.getElementById('homeInstallBtn')?.classList.add('hidden');msg('DigitalMitra installed successfully')});
 async function installApp(){if(!deferredInstallPrompt){msg('If Install is not shown, open Chrome menu ⋮ and choose Add to Home screen.');return}deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;if(choice.outcome==='accepted')msg('Installing DigitalMitra...');deferredInstallPrompt=null}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-let products=[],sales=[],services=[],businessCustomers=[],currentProfile=null;
+let products=[],sales=[],services=[],businessCustomers=[],customerPayments=[],currentProfile=null;
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function msg(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',1800)}
 function showAuth(){document.getElementById('auth').classList.add('active');document.getElementById('app').classList.remove('active');document.getElementById('nav').classList.add('hidden')}
@@ -292,7 +292,8 @@ async function load(){
  const p=await sb.from('products').select('*').order('name');if(p.error){msg(p.error.message);return}
  products=p.data||[];
  const cu=await sb.from('customers').select('*').order('name'); if(cu.error){msg(cu.error.message);return} businessCustomers=cu.data||[];
- const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);sales=s.data||[];
+ const s=await sb.from('sales').select('*').order('created_at',{ascending:false}).limit(100);if(s.error){msg('Could not load sales: '+s.error.message);return} sales=s.data||[];
+ const cp=await sb.from('customer_payments').select('*').order('created_at',{ascending:false}).limit(500);if(cp.error){msg('Could not load customer payments: '+cp.error.message);return} customerPayments=cp.data||[];
  const sv=await sb.from('services').select('*').order('created_at',{ascending:false}).limit(100);if(sv.error){msg(sv.error.message);return} services=sv.data||[];
  render();
 }
@@ -438,6 +439,9 @@ function preview(){
 }
 let saleCustomerContactTimer=null;
 function normalizedCustomerName(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ')}
+function customerCreditSalesTotal(name){const key=normalizedCustomerName(name);return sales.filter(s=>s.payment_method==='Credit'&&normalizedCustomerName(s.customer_name)===key).reduce((a,s)=>a+Number(s.total||0),0)}
+function customerPaymentsTotal(id){return customerPayments.filter(p=>p.customer_id===id).reduce((a,p)=>a+Number(p.amount||0),0)}
+function customerCurrentDue(customer){if(!customer)return 0;return Math.max(0,Number(customer.opening_due||0)+customerCreditSalesTotal(customer.name)-customerPaymentsTotal(customer.id))}
 function findBusinessCustomerByName(name){
  const key=normalizedCustomerName(name);
  return businessCustomers.find(c=>normalizedCustomerName(c.name)===key);
@@ -507,7 +511,7 @@ async function saveSale(){
   }else{
    const {data:sd}=await sb.auth.getSession();
    if(sd.session){
-    const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,due_amount:0,mobile_number:mobile}).select('*').single();
+    const {data:newCustomer,error:customerError}=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile}).select('*').single();
     if(!customerError && newCustomer) businessCustomers.push(newCustomer);
    }
   }
@@ -615,7 +619,7 @@ async function saveService(){
  const {data,error}=await sb.from('services').insert({user_id:sd.session.user.id,customer_name:customerName,mobile_number:mobile||null,service_name:serviceName,price,cost,payment_method:payment,status,notes:notes||null}).select('*').single();
  if(error){msg(error.message);return}
  const existing=findBusinessCustomerByName(customerName);
- if(customerName!=='Walk-in Customer'&&mobile){if(existing){const r=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);if(!r.error)existing.mobile_number=mobile}else{const r=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,due_amount:0,mobile_number:mobile}).select('*').single();if(!r.error&&r.data)businessCustomers.push(r.data)}}
+ if(customerName!=='Walk-in Customer'&&mobile){if(existing){const r=await sb.from('customers').update({mobile_number:mobile}).eq('id',existing.id);if(!r.error)existing.mobile_number=mobile}else{const r=await sb.from('customers').insert({user_id:sd.session.user.id,name:customerName,opening_due:0,due_amount:0,mobile_number:mobile}).select('*').single();if(!r.error&&r.data)businessCustomers.push(r.data)}}
  services.unshift(data);
  ['serviceCustomer','serviceMobile','serviceName','servicePrice','serviceCost','serviceNotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('serviceStatus').value='Pending';document.getElementById('servicePayment').value='Cash';document.getElementById('serviceMobileWrap').classList.add('hidden');render();msg('Service saved');
 }
@@ -642,28 +646,28 @@ function render(){
  const now=new Date(),ym=now.toISOString().slice(0,7),td=now.toISOString().slice(0,10);
  const ms=sales.filter(s=>s.created_at.slice(0,10).startsWith(ym)),ts=sales.filter(s=>s.created_at.slice(0,10)===td);
  document.getElementById('today').textContent=money(ts.reduce((a,s)=>a+s.total,0));document.getElementById('month').textContent=money(ms.reduce((a,s)=>a+s.total,0));document.getElementById('profit').textContent=money(ms.reduce((a,s)=>a+s.profit,0));
- const savedCustomerNames=new Set(businessCustomers.map(c=>normalizedCustomerName(c.name))); const savedCustomerDue=businessCustomers.reduce((a,c)=>a+Number(c.due_amount||0),0); const unsavedCreditDue=sales.filter(s=>s.payment_method==='Credit'&&!savedCustomerNames.has(normalizedCustomerName(s.customer_name))).reduce((a,s)=>a+Number(s.total||0),0); document.getElementById('due').textContent=money(savedCustomerDue+unsavedCreditDue);
+ const savedCustomerNames=new Set(businessCustomers.map(c=>normalizedCustomerName(c.name))); const savedCustomerDue=businessCustomers.reduce((a,c)=>a+customerCurrentDue(c),0); const unsavedCreditDue=sales.filter(s=>s.payment_method==='Credit'&&!savedCustomerNames.has(normalizedCustomerName(s.customer_name))).reduce((a,s)=>a+Number(s.total||0),0); document.getElementById('due').textContent=money(savedCustomerDue+unsavedCreditDue);
  document.getElementById('low').innerHTML=products.filter(p=>Number(p.stock)<5).map(p=>`<div class="item row"><b>${esc(p.name)}</b><span class="badge due">${p.stock} left</span></div>`).join('')||'<p class="muted">No low-stock products.</p>';
  document.getElementById('plist').innerHTML=products.map(p=>`<div class="item"><div class="row"><span><b>${esc(p.name)}</b><br><small>Sell ${money(p.selling_price)} · Stock ${p.stock}</small></span><span class="badge ${p.stock<=p.reorder_level?'due':''}">${p.stock<=p.reorder_level?'LOW':'OK'}</span></div><div class="product-actions"><button class="product-edit" onclick="editProduct('${p.id}')">✎ Edit</button><button class="product-delete" onclick="deleteProduct('${p.id}')">🗑 Delete</button></div></div>`).join('')||'<p class="muted">No products.</p>';
- const customerDueTotals={};sales.filter(x=>x.payment_method==='Credit').forEach(x=>{customerDueTotals[x.customer_name]=(customerDueTotals[x.customer_name]||0)+Number(x.total||0)});
+ const customerDueTotals={};sales.filter(x=>x.payment_method==='Credit').forEach(x=>{const k=normalizedCustomerName(x.customer_name);customerDueTotals[k]=(customerDueTotals[k]||0)+Number(x.total||0)});
  const sortedSales=[...sales].sort((a,b)=>{
    const ad=a.payment_method==='Credit'?1:0,bd=b.payment_method==='Credit'?1:0;
    if(ad!==bd)return bd-ad;
-   if(ad)return (customerDueTotals[b.customer_name]||0)-(customerDueTotals[a.customer_name]||0);
+   if(ad)return (customerDueTotals[normalizedCustomerName(b.customer_name)]||0)-(customerDueTotals[normalizedCustomerName(a.customer_name)]||0);
    return new Date(b.created_at)-new Date(a.created_at);
  });
- document.getElementById('slist').innerHTML=sortedSales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';const due=s.payment_method==='Credit'?customerDueTotals[s.customer_name]||0:0;return `<div class="item"><div class="sales-item-top"><div><div class="sales-customer">${esc(s.customer_name)}</div><div class="sales-detail">${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</div></div><div class="sales-total">${money(s.total)}</div></div>${s.payment_method==='Credit'?'<div class="sales-due">Due: '+money(due)+'</div>':''}<button class="sales-share" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div>`}).join('')||'<div class="sales-empty muted">No sales yet.<br>Create your first sale from the Sale tab.</div>';
+ document.getElementById('slist').innerHTML=sortedSales.map(s=>{const pname=products.find(p=>p.id===s.product_id)?.name||'Product';const customer=businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(s.customer_name));const due=s.payment_method==='Credit'?(customer?customerCurrentDue(customer):customerDueTotals[normalizedCustomerName(s.customer_name)]||0):0;return `<div class="item"><div class="sales-item-top"><div><div class="sales-customer">${esc(s.customer_name)}</div><div class="sales-detail">${s.quantity} × ${esc(pname)} · ${esc(s.payment_method)}</div></div><div class="sales-total">${money(s.total)}</div></div>${s.payment_method==='Credit'?'<div class="sales-due">Current Due: '+money(due)+'</div>':''}<button class="sales-share" onclick="shareSaleWhatsApp('${s.id}')">💬 Share WhatsApp</button></div>`}).join('')||'<div class="sales-empty muted">No sales yet.<br>Create your first sale from the Sale tab.</div>';
  renderServices();
  renderCustomers();
 }
 async function renderCustomers(){
  const el=document.getElementById('clist');if(!el)return;
  const q=(document.getElementById('customerSearch')?.value||'').trim().toLowerCase();
- const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>map[s.customer_name]=(map[s.customer_name]||0)+Number(s.total||0));
- const names=[...new Set([...businessCustomers.map(x=>x.name),...Object.keys(map)])].filter(n=>n.toLowerCase().includes(q));
+ const map={};sales.filter(s=>s.payment_method==='Credit').forEach(s=>{const k=normalizedCustomerName(s.customer_name);map[k]=(map[k]||0)+Number(s.total||0)});
+ const names=[...new Set([...businessCustomers.map(x=>x.name),...sales.filter(s=>s.payment_method==='Credit').map(s=>s.customer_name)])].filter(n=>n.toLowerCase().includes(q));
  el.innerHTML=names.map(n=>{
-   const x=businessCustomers.find(c=>c.name===n);
-   const due=x?Number(x.due_amount||0):Number(map[n]||0);
+   const x=businessCustomers.find(c=>normalizedCustomerName(c.name)===normalizedCustomerName(n));
+   const due=x?customerCurrentDue(x):Number(map[normalizedCustomerName(n)]||0);
    const safe=esc(n).replace(/'/g,"&#39;");
    const mobile=x?.mobile_number||'';
    return `<div class="customer-card">
@@ -710,14 +714,28 @@ async function saveCustomerEdit(){
  const mobile=document.getElementById('editCustomerMobile').value.trim();
  if(!n){msg('Customer name is required');return}
  if(!Number.isFinite(due)||due<0){msg('Enter a valid due amount');return}
+ if(mobile && mobile.length!==10){msg('Enter a valid 10-digit mobile number');return}
  if(editingCustomerId){
-   const {error}=await sb.from('customers').update({name:n,due_amount:due,mobile_number:mobile}).eq('id',editingCustomerId);
+   const customer=businessCustomers.find(c=>c.id===editingCustomerId);
+   if(!customer){msg('Customer record not found');return}
+   const oldName=customer.name;
+   if(normalizedCustomerName(oldName)!==normalizedCustomerName(n)){
+     const sr=await sb.from('sales').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_name',oldName);
+     if(sr.error){msg('Could not move sales to the new customer name: '+sr.error.message);return}
+     const svr=await sb.from('services').update({customer_name:n}).eq('user_id',customer.user_id).eq('customer_name',oldName);
+     if(svr.error){msg('Could not move services to the new customer name: '+svr.error.message);return}
+   }
+   const creditTotal=customerCreditSalesTotal(n);
+   const paidTotal=customerPaymentsTotal(customer.id);
+   const openingDue=Math.max(0,due-creditTotal+paidTotal);
+   const {error}=await sb.from('customers').update({name:n,opening_due:openingDue,due_amount:0,mobile_number:mobile||null}).eq('id',editingCustomerId);
    if(error){msg(error.message);return}
  }else{
    const {data:sd}=await sb.auth.getSession();
    if(!sd.session){msg('Please log in again');return}
-   const {error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,due_amount:due,mobile_number:mobile});
+   const {data:newCustomer,error}=await sb.from('customers').insert({user_id:sd.session.user.id,name:n,opening_due:due,due_amount:0,mobile_number:mobile||null}).select('*').single();
    if(error){msg(error.message);return}
+   if(newCustomer)businessCustomers.push(newCustomer);
  }
  closeCustomerModal();await load();msg('Customer updated');
 }
